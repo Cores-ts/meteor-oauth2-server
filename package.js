@@ -10,11 +10,9 @@ Package.onUse(function(api) {
 
     api.use('webapp', 'server');
     api.use('check', 'server');
-    api.use('meteorhacks:async@1.0.0', 'server');
-    api.use('simple:json-routes@2.1.0', 'server');
 
     api.addFiles('common.js', ['client', 'server']);
-    api.addFiles('meteor-model.js', 'server');
+    api.addFiles('model.js', 'server');
     api.addFiles('server.js', 'server');
     api.addFiles('client.js', 'client');
 
@@ -22,9 +20,7 @@ Package.onUse(function(api) {
 });
 
 Npm.depends({
-    "express": "4.13.4",
-    "body-parser": "1.14.2",
-    "oauth2-server": "2.4.1"
+    "oauth2-server": "3.0.1"
 });
 
 Package.onTest(function(api) {

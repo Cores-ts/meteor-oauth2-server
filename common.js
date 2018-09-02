@@ -30,7 +30,7 @@ oAuth2Server = {
         refreshTokens: 'oauth2/refreshTokens'
     },
     methodNames: {
-        authCodeGrant: 'oauth2/authCodeGrant'
+        authorize: 'oauth2/authorize'
     },
     collections: {
         refreshToken: refreshTokensCollection,
