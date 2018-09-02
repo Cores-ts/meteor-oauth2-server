@@ -19,7 +19,8 @@ oAuth2Server.collections.client = clientsCollection;
  */
 
 oAuth2Server.oauthserver = new OAuth2Server({
-    model: MeteorModel
+    model: MeteorModel,
+    allowEmptyState: true
 });
 
 
@@ -32,12 +33,11 @@ WebApp.connectHandlers.use('/oauth/token', (req, res, next) => {
     res.writeHead(200);
     let request = new Request(req);
     let response = new Response(res);
-    return oAuth2Server.oauthserver.token(request, response)
+    return oAuth2Server.oauthserver.authenticate(request, response)
         .then(function (token) {
-            next();
-        }).catch(function (err) {
-            res.end(`You should really authenticate your requests.`)
-        });
+            res.end(token)
+            next()
+        }).catch(function (err) {});
 });
 
 /**
@@ -73,3 +73,21 @@ Meteor.publish(oAuth2Server.pubSubNames.refreshTokens, function () {
 /**
  * Meteor methods
  */
+
+Meteor.methods({
+    'authorize'(clientId, redirectUri, responseType, scope, state) {
+        check(clientId, String);
+        check(redirectUri, String);
+        check(responseType, String);
+        check(scope, Match.Optional(Match.OneOf(null, [String])));
+        check(state, Match.Optional(Match.OneOf(null, String)));
+
+        let userId = this.userId;
+        if (!userId) {
+            return {
+                success: false,
+                error: 'User not authenticated.'
+            }
+        }
+    }
+})
