@@ -40,6 +40,17 @@ WebApp.connectHandlers.use('/oauth/token', (req, res, next) => {
         }).catch(function (err) {});
 });
 
+WebApp.connectHandlers.use('/oauth/authorization_code', (req, res, next) => {
+    res.writeHead(200);
+    let request = new Request(req);
+    let response = new Response(res);
+    return oAuth2Server.oauthserver.generateAuthorizationCode({}, {}, null)
+        .then(function (code) {
+            console.log(code)
+            next()
+        }).catch(function (err) {});
+});
+
 /**
  * Publish data
  */
