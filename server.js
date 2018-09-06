@@ -9,7 +9,7 @@ const Response = OAuth2Server.Response;
 /**
  * Configure server-side collections
  */
-var accessTokenCollection = new Meteor.Collection('OAuth2AccessTokens');
+accessTokenCollection = new Meteor.Collection('OAuth2AccessTokens');
 clientsCollection = new Meteor.Collection('OAuth2Clients');
 
 oAuth2Server.collections.accessToken = accessTokenCollection;
@@ -32,32 +32,18 @@ oAuth2Server.oauthserver = new OAuth2Server({
  * Reimplement authorize here instead of the method
  */
 
-// WebApp.connectHandlers.use('/oauth/authorize', (req, res, next) => {
-//     res.writeHead(200);
-//     let request = new Request(req);
-//     let response = new Response(res);
-//     return oAuth2Server.oauthserver.authenticate(request, response)
-//         .then(function (token) {
-//             res.end(token)
-//             next()
-//         }).catch(function (err) {
-//             console.error(err)
-//             res.end()
-//         });
-// });
-
-
 WebApp.connectHandlers
-    .use(bodyParser.urlencoded({ extended: false }))
+    .use(bodyParser.urlencoded({ extended: true }))
+    .use(bodyParser.json())
     .use('/oauth/token', (req, res, next) => {
         let request = new Request(req);
         let response = new Response(res);
-        console.log(request)
         oAuth2Server.oauthserver.token(request, response, {
             requireClientAuthentication: { password: false }
         })
         next()
     })
+
 /**
  * Publish data
  */
