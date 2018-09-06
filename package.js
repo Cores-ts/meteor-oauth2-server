@@ -20,6 +20,7 @@ Package.onUse(function(api) {
 });
 
 Npm.depends({
+    "body-parser": "1.18.3",
     "oauth2-server": "3.0.1"
 });
 
