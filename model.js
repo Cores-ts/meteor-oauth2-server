@@ -8,5 +8,36 @@ MeteorModel = {
             id: client.clientId,
             grants: client.grantsAllowed
         }
+    },
+    saveToken: async function (token, client, user) {
+        try {
+            let tokenDoc = await accessTokenCollection.rawCollection().insert({
+                accessToken: token.accessToken,
+                clientId: client.id,
+                userId: user.id,
+                expires: token.accessTokenExpiresAt,
+                scope: token.scope
+            })
+            if (token.hasOwnProperty(refreshToken)) {
+                let refreshDoc = await refreshTokenCollection.rawCollection().insert({
+                    refreshToken: token.refreshToken,
+                    clientId: client.id,
+                    userId: user.id,
+                    expires: token.refreshTokenExpiresAt,
+                    scope: token.scope
+                })
+            }
+            return {
+                accessToken: tokenDoc.accessToken,
+                accessTokenExpiresAt: tokenDoc.accessTokenExpiresAt,
+                refreshToken: refreshToken.refreshToken,
+                refreshTokenExpiresAt: refreshToken.refreshTokenExpiresAt,
+                scope: tokenDoc.scope,
+                client: { id: tokenDoc.clientId },
+                user: { id: tokenDoc.userId }
+            }
+        } catch (error) {
+
+        }
     }
 }
