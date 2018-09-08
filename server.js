@@ -33,13 +33,17 @@ oAuth2Server.oauthserver = new OAuth2Server({
  */
 
 WebApp.connectHandlers
-    .use(bodyParser.urlencoded({ extended: true }))
     .use(bodyParser.json())
+    .use(bodyParser.urlencoded({ extended: true }))
     .use('/oauth/token', (req, res, next) => {
         let request = new Request(req);
         let response = new Response(res);
         oAuth2Server.oauthserver.token(request, response, {
             requireClientAuthentication: { password: false }
+        }).then(function (token) {
+            res.locals.oauth = { token: token };
+        }).catch(function (e) {
+            throw new Meteor.Error(e)
         })
         next()
     })
