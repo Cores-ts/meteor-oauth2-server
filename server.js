@@ -35,6 +35,13 @@ oAuth2Server.oauthserver = new OAuth2Server({
 WebApp.connectHandlers
     .use(bodyParser.json())
     .use(bodyParser.urlencoded({ extended: true }))
+    .use((req, res, next) => {
+        if (req.headers['content-type'] !== 'application/x-www-form-urlencoded' && req.method === 'POST') {
+            req.headers['content-type'] = 'application/x-www-form-urlencoded';
+            req.body = Object.assign({}, req.body, req.query);
+        }
+        next()
+    })
     .use('/oauth/token', (req, res, next) => {
         let request = new Request(req);
         let response = new Response(res);
