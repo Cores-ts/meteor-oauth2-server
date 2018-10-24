@@ -19,7 +19,7 @@ oAuth2Server.collections.client = clientsCollection;
  * Set up handler and model
  */
 
-oAuth2Server.oauthserver = new OAuth2Server({
+const oauth = new OAuth2Server({
     model: MeteorModel
 });
 
@@ -33,8 +33,8 @@ oAuth2Server.oauthserver = new OAuth2Server({
  */
 
 WebApp.connectHandlers
-    .use(bodyParser.json())
     .use(bodyParser.urlencoded({ extended: true }))
+    .use(bodyParser.json())
     .use((req, res, next) => {
         if (req.headers['content-type'] !== 'application/x-www-form-urlencoded' && req.method === 'POST') {
             req.headers['content-type'] = 'application/x-www-form-urlencoded';
@@ -45,13 +45,29 @@ WebApp.connectHandlers
     .use('/oauth/token', (req, res, next) => {
         let request = new Request(req);
         let response = new Response(res);
-        oAuth2Server.oauthserver.token(request, response, {
+        oauth.token(request, response, {
             requireClientAuthentication: { password: false }
         }).then(function (token) {
             res.locals.oauth = { token: token };
-        }).catch(function (e) {
-            throw new Meteor.Error(e)
+        }).catch(function (error) {
+            throw new Meteor.Error(error)
         })
+        next()
+    })
+    .use('/oauth/authorize', (req, res, next) => {
+        var request = new Request(req);
+        var response = new Response(res);
+        var options = {};
+        // options.allowEmptyState = true;
+
+        oauth.authenticate(request, response, options)
+            .then(function (token) {
+                res.locals.oauth = { token: token };
+                // next();
+            })
+            .catch(function (error) {
+                throw new Meteor.Error(error)
+            });
         next()
     })
 
@@ -83,4 +99,31 @@ Meteor.publish(oAuth2Server.pubSubNames.refreshTokens, function () {
             $gt: new Date()
         }
     });
+});
+
+/**
+ * Meteor methods
+ */
+
+Meteor.methods({
+    'oauth2/authorize': (client_id, redirect_uri, response_type, scope, state) => {
+        // validate parameters.
+        check(client_id, String);
+        check(redirect_uri, String);
+        check(response_type, String);
+        check(scope, Match.Optional(Match.OneOf(null, [String])));
+        check(state, Match.Optional(Match.OneOf(null, String)));
+
+        // oauth.authorize(request, response, options)
+        //     .then(function (code) {
+        //         console.log('I neeed to KNOW!!')
+        //         res.locals.oauth = { code: code };
+        //         next();
+        //     })
+        //     .catch(function (error) {
+        //         console.log('Error Authorize');
+        //         throw new Meteor.Error(error)
+        //     });
+
+    },
 });

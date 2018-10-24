@@ -17,7 +17,7 @@ MeteorModel = {
                 user: user
               };        
         } catch (error) {
-
+            console.log(error);
         };
     },
     getRefreshToken: async function (refreshToken) {
@@ -38,7 +38,7 @@ MeteorModel = {
                 user: user
               };
         } catch (error) {
-
+            console.log(error);
         };
     },
     getAuthorizationCode: async function (authorizationCode) {
@@ -60,27 +60,31 @@ MeteorModel = {
                 user: user
               };
         } catch (error) {
-            
+            console.log(error);
         };
     },
     getClient: async function (clientId, clientSecret) {
-        let client = await clientsCollection.rawCollection().findOne({
-            active: true,
-            clientId: clientId
-        });
-        return {
-            id: client.clientId,
-            grants: client.grants
-        };
+        try {
+            let client = await clientsCollection.rawCollection().findOne({
+                active: true,
+                clientId: clientId
+            });
+            return {
+                id: client.clientId,
+                redirectUris: client.redirectUri,
+                grants: client.grants
+            };
+        } catch (error) {
+            console.log(error);
+        }
     },
     getUserFromClient: async function (client) {
         try {
-            let user = await Meteor.users.findOne({_id: token.user_id});
+            let user = await Meteor.users.rawCollection().findOne({_id: token.user_id});
             return user;
         } catch (error) {
-            
+            console.log(error);
         }
-        
     },
     saveToken: async function (token, client, user) {
         try {
@@ -110,6 +114,7 @@ MeteorModel = {
                 user: { id: tokenDoc.userId }
             };
         } catch (error) {
+            console.log(error);
         };
     },
     saveAuthorizationCode: async function (code, client, user) {
@@ -132,7 +137,7 @@ MeteorModel = {
                 user: {id: authorizationCode.user_id}
               };
         } catch (error) {
-            
+            console.log(error);
         }
     },
     revokeToken: async function (token) {
@@ -148,7 +153,7 @@ MeteorModel = {
             let authorizationCode = await accessTokenCollection.rawCollection().remove({authorization_code: code.authorizationCode});
             return authorizationCode;
         } catch (error) {
-            
+            console.log(error);
         }
     },
     verifyScope: async function (token, scope) {
@@ -160,7 +165,7 @@ MeteorModel = {
               let authorizedScopes = token.scope.split(' ');
               return requestedScopes.every(s => authorizedScopes.indexOf(s) >= 0);            
         } catch (error) {
-            
+            console.log(error);
         }
     }
 };
