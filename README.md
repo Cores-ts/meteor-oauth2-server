@@ -6,7 +6,16 @@ resourceServer example for a detailed demonstration on how to get things
 working.
 
 ## Installation
-`meteor add zamphyr:meteor-oauth2-server`
+`meteor add Cores-ts:meteor-oauth2-server`
+
+### Observation
+In order to edit the package at the develop time, you have to define a constant, 
+like:
+
+`export METEOR_PACKAGE_DIRS=<dir with packages>`
+
+So, you can edit the package itself and the project will auto-refresh with
+the last version.
 
 
 ## API

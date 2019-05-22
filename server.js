@@ -24,7 +24,7 @@ var meteorModel = new MeteorModel(
 oAuth2Server.oauthserver = oauthserver({
     model: meteorModel,
     grants: ['authorization_code'],
-    debug: false
+    debug: true
 });
 
 oAuth2Server.collections.accessToken = accessTokenCollection;
@@ -34,18 +34,22 @@ oAuth2Server.collections.client = clientsCollection;
 var app = express();
 
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json())
+app.use(bodyParser.json());
 
 const transformRequestsNotUsingFormUrlencodedType = (req, res, next) => {
     if (req.headers['content-type'] !== 'application/x-www-form-urlencoded' && req.method === 'POST') {
-        req.headers['content-type'] = 'application/x-www-form-urlencoded'
+        req.headers['content-type'] = 'application/x-www-form-urlencoded';
         req.body = Object.assign({}, req.body, req.query)
     }
 
     next()
-}
+};
 
-app.all('/oauth/token', transformRequestsNotUsingFormUrlencodedType, oAuth2Server.oauthserver.grant(), oAuth2Server.oauthserver.errorHandler())
+app.all('/oauth/token',
+    transformRequestsNotUsingFormUrlencodedType,
+    oAuth2Server.oauthserver.grant(),
+    oAuth2Server.oauthserver.errorHandler()
+);
 
 WebApp.rawConnectHandlers.use(app);
 
@@ -122,6 +126,8 @@ methods[oAuth2Server.methodNames.authCodeGrant] = function(clientId, redirectUri
     if (!scope) {
         scope = [];
     }
+
+    console.log('SCOPE SCOPE SCOPE', scope);
 
     // validate the user is authenticated.
     var userId = this.userId;

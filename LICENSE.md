@@ -1,5 +1,6 @@
 MIT License
 
+Copyright (c) 2019 SWAMP IoT Factory
 Copyright (c) 2018 Zamphyr
 Copyright (c) 2016 Prime 8 Consulting
 

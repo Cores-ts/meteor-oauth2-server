@@ -1,8 +1,8 @@
 Package.describe({
-    name: 'zamphyr:meteor-oauth2-server',
+    name: 'meteor-oauth2-server',
     version: '0.0.1',
     summary: 'Add OAuth 2 server support to your application.',
-    git: 'https://github.com/zamphyr/meteor-oauth2-server'
+    git: 'https://github.com/Cores-ts/meteor-oauth2-server'
 });
 
 Package.onUse(function(api) {
