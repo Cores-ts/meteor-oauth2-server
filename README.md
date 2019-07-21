@@ -20,14 +20,14 @@ the last version.
 
 ## API
 
-oAuth2Server - Exported so all code in meteor can access the functionality.
+oauth - Exported so all code in meteor can access the functionality.
  - pubSubNames
    - authCodes - Constant string representing the auth codes pub/sub.
 
    - refreshTokens - Constant string representing the refresh token pub/sub.
 
  - methodNames
-   - authCodeGrant - Constant string representing th authCodeGran meteor method.
+   - authorize - Constant string representing th authCodeGran meteor method.
 
  - collections
    - refreshToken - Collection of the refresh tokens.
@@ -46,7 +46,7 @@ oAuth2Server - Exported so all code in meteor can access the functionality.
    Example:
    ```javascript
        // subscribe to a user's authorization codes.
-       oAuth2Server.subscribeTo.authCode();
+       oauth.subscribeTo.authCode();
    ```
 
    - refreshTokens - Wrapper function subscribe to the refresh tokens subscription. Returns a standard subscription handle.
@@ -54,21 +54,21 @@ oAuth2Server - Exported so all code in meteor can access the functionality.
    Example:
    ```javascript
       // subscribe to a user's refresh tokens.
-      oAuth2Server.subscribeTo.refreshTokens();
+      oauth.subscribeTo.refreshTokens();
     ```
 
  - callMethod (client)
-   - authCodeGrant - Wrapper for Meteor.method to create an authorization code. This is an async function
+   - authorize - Wrapper for Meteor.method to create an authorization code. This is an async function
    and a callback must be provided to be of any use.
 
    Example:
    ```javascript
-   oAuth2Server.callMethod.authCodeGrant(client_id, redirect_uri, response_type, scope, state, function(err, authCodeGrantResult) {
-       // see below for a description of authCodeGrantResult
+   oauth.callMethod.authorize(client_id, redirect_uri, response_type, scope, state, function(err, authorizeResult) {
+       // see below for a description of authorizeResult
    });
    ```
 
-    authCodeGrantResult
+    authorizeResult
     ```javascript
     {
         success: boolean,

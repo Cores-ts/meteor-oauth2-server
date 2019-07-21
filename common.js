@@ -24,16 +24,32 @@ authCodesCollection.allow({
     }
 });
 
-oAuth2Server = {
+clientsCollection = new Meteor.Collection('OAuth2Clients');
+
+clientsCollection.allow({
+    insert: function() {
+        return true;
+    },
+    update: function() {
+        return true;
+    },
+    remove: function() {
+        return true;
+    }
+});
+
+oauth = {
     pubSubNames: {
         authCodes: 'oauth2/authCodes',
-        refreshTokens: 'oauth2/refreshTokens'
+        refreshTokens: 'oauth2/refreshTokens',
+        client: 'oauth2/clientsCollection'
     },
     methodNames: {
-        authCodeGrant: 'oauth2/authCodeGrant'
+        authorize: 'oauth2/authorize'
     },
     collections: {
         refreshToken: refreshTokensCollection,
-        authCode: authCodesCollection
+        authCode: authCodesCollection,
+        client: clientsCollection
     }
 };
