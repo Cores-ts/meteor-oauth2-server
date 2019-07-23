@@ -78,20 +78,9 @@ const transformRequestsNotUsingFormUrlencodedType = (req, res, next) => {
 
     next()
 }
-/*
-app.all('/oauth/token',
-    transformRequestsNotUsingFormUrlencodedType,
-    oauth.oauthserver.token()
-);
-*/
-// create check callback that returns the user.
-var checkTokenCallback = function (err, result) {
-    console.log("checkTokenCallback>>>>>", err, result)
-    return result
-}
 
 app.all("/oauth/token",
-    function (req, res, next) {
+    function (req, res) {
         let nreq = new Request(req)
         let nres = new Response(res)
         oauth.oauthserver.token(nreq, nres, null)
@@ -121,8 +110,45 @@ app.all("/oauth/token",
     }
 )
 
+/////////////////////
+// Configure really basic identity service
+////////////////////
+
 app.get("/oauth/getIdentity",
-    function (req, res, next) {
+    function (req, res) {
+        let nreq = new Request(req)
+        let nres = new Response(res)
+        oauth.oauthserver.authenticate(nreq, nres, null)
+            .then((token) => {
+                // The resource owner granted the access request.
+                console.log("result", token)
+                return Meteor.users.findOne(token.user.id, {
+                    fields: {
+                        "username": 1,
+                        "profile.name": 1,
+                        "profile.uavatar": 1
+                    }
+                })
+            })
+            .then((user) => {
+                // The resource owner granted the access request.
+                console.log("resultuser", user)
+                res.status(200).send(user)
+            })
+            .catch((err) => {
+                // The request was invalid or not authorized.
+                console.log(err)
+                res.status(err.statusCode).send({
+                    sucess: false,
+                    error: err.message
+                })
+            })
+
+    }
+)
+
+app.get("/oauth/whoami",
+    function (req, res) {
         let nreq = new Request(req)
         let nres = new Response(res)
         oauth.oauthserver.authenticate(nreq, nres, null)
@@ -155,39 +181,6 @@ app.get("/oauth/getIdentity",
 )
 
 WebApp.rawConnectHandlers.use(app)
-
-/////////////////////
-// Configure really basic identity service
-////////////////////
-
-/*
-JsonRoutes.Middleware.use(
-    '/oauth/getIdentity',
-    oauth.oauthserver.authenticate()
-);
-
-JsonRoutes.add('get', '/oauth/getIdentity', function (req, res, next) {
-
-    if (debug) {
-        console.log('GET /oauth/getIdentity');
-    }
-
-    var accessTokenStr = (req.params && req.params.access_token) || (req.query && req.query.access_token);
-    var accessToken = oauth.collections.accessToken.findOne({
-        accessToken: accessTokenStr
-    });
-    var user = Meteor.users.findOne(accessToken.userId);
-
-    JsonRoutes.sendResult(
-        res, {
-            data: {
-                id: user._id,
-                username: user.username
-            }
-        }
-    );
-});
-*/
 
 ////////////////////
 // Meteor publish.
@@ -235,7 +228,7 @@ Meteor.publish(oauth.pubSubNames.client, function () {
 var methods = {}
 methods[oauth.methodNames.authorize] = async function (client_id, redirect_uri, response_type, scope, state) {
 
-    console.log("authorizemethid")
+    console.log("authorizemethod")
     // validate parameters.
     check(client_id, String)
     check(redirect_uri, String)
@@ -313,15 +306,12 @@ methods[oauth.methodNames.authorize] = async function (client_id, redirect_uri, 
                 res.body.success = true
                 delete res.body.error
             }
-
             return res
         })
         .catch(function (err) {
             // handle error condition
-            //return err
             console.log("ERRORPROMISE", err)
             throw new Meteor.Error(err.code, err.name, err.message)
-
         })
 
     return resultFn
