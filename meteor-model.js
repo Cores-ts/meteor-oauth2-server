@@ -37,6 +37,8 @@ MeteorModel = (function () {
                         accessToken: bearerToken
                     })
 
+                    if (!token) callback("Token not found or expired")
+
                     var data = {
                         accessToken: token.accessToken,
                         accessTokenExpiresAt: token.expiresAt,
@@ -83,6 +85,8 @@ MeteorModel = (function () {
                             clientSecret: clientSecret
                         })
                     }
+
+                    if (!client) callback("Client not valid or inactive")
 
                     client.id = client.clientId
                     //client.redirectUris = [client.redirectUri]
@@ -198,6 +202,8 @@ MeteorModel = (function () {
                     var code = this.authCodeCollection.findOne({
                         authorizationCode: authorizationCode
                     })
+
+                    if (!code) callback("Authorization code not found or expired")
 
                     console.log(code)
 
@@ -315,9 +321,7 @@ MeteorModel = (function () {
                         refreshToken: refreshToken
                     })
 
-                    if (!token) {
-                        callback("Refresh token not found or expired")
-                    }
+                    if (!token) callback("Refresh token not found or expired")
 
                     var data = {
                         refreshToken: token.refreshToken,

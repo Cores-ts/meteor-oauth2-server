@@ -270,7 +270,6 @@ methods[oauth.methodNames.authorize] = async function (client_id, redirect_uri, 
     // retrieve the grant function from oauth2-server. This method setups up the
     // this context and such. The returned method is what express would normally
     // expect when handling a URL. eg. function(req, res, next)
-    //var authorizeFn = oauth.oauthserver.authorize(checkCallback);
 
     // run the auth code grant function in a synchronous manner.
 
@@ -298,13 +297,6 @@ methods[oauth.methodNames.authorize] = async function (client_id, redirect_uri, 
             redirectToUri: redirect_uri
         }
     })
-
-    // create check callback that returns the user.
-    var checkCallback = function (error, result) {
-        console.log("checkcallback>>>>>", req, result)
-        if (error) callback(error)
-        callback(null, result)
-    }
 
     var resultFn = oauth.oauthserver.authorize(req, res, {
             authenticateHandler: {
