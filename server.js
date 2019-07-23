@@ -86,7 +86,6 @@ app.all("/oauth/token",
         oauth.oauthserver.token(nreq, nres, null)
             .then((token) => {
                 // The resource owner granted the access request.
-                console.log("result", token)
                 let final_token = {
                     token_type: "bearer",
                     access_token: token.accessToken,
@@ -100,7 +99,6 @@ app.all("/oauth/token",
             })
             .catch((err) => {
                 // The request was invalid or not authorized.
-                console.log(err)
                 res.status(err.statusCode).send({
                     sucess: false,
                     error: err.message
@@ -121,7 +119,6 @@ app.get("/oauth/getIdentity",
         oauth.oauthserver.authenticate(nreq, nres, null)
             .then((token) => {
                 // The resource owner granted the access request.
-                console.log("result", token)
                 return Meteor.users.findOne(token.user.id, {
                     fields: {
                         "username": 1,
@@ -132,12 +129,10 @@ app.get("/oauth/getIdentity",
             })
             .then((user) => {
                 // The resource owner granted the access request.
-                console.log("resultuser", user)
                 res.status(200).send(user)
             })
             .catch((err) => {
                 // The request was invalid or not authorized.
-                console.log(err)
                 res.status(err.statusCode).send({
                     sucess: false,
                     error: err.message
@@ -154,7 +149,6 @@ app.get("/oauth/whoami",
         oauth.oauthserver.authenticate(nreq, nres, null)
             .then((token) => {
                 // The resource owner granted the access request.
-                console.log("result", token)
                 return Meteor.users.findOne(token.user.id, {
                     fields: {
                         "username": 1,
@@ -165,12 +159,10 @@ app.get("/oauth/whoami",
             })
             .then((user) => {
                 // The resource owner granted the access request.
-                console.log("resultuser", user)
                 res.status(200).send(user)
             })
             .catch((err) => {
                 // The request was invalid or not authorized.
-                console.log(err)
                 res.status(err.statusCode).send({
                     sucess: false,
                     error: err.message
@@ -212,7 +204,6 @@ Meteor.publish(oauth.pubSubNames.refreshTokens, function () {
 })
 
 Meteor.publish(oauth.pubSubNames.client, function () {
-    //console.log('this', this, this.userId);
     if (!this.userId) {
         return this.ready()
     }
@@ -301,7 +292,6 @@ methods[oauth.methodNames.authorize] = async function (client_id, redirect_uri, 
             }
         })
         .then(function (code) {
-            console.log("CODE>>>", code, "RES>>>", res)
             if (code.authorizationCode) {
                 res.body.success = true
                 delete res.body.error
@@ -310,7 +300,6 @@ methods[oauth.methodNames.authorize] = async function (client_id, redirect_uri, 
         })
         .catch(function (err) {
             // handle error condition
-            console.log("ERRORPROMISE", err)
             throw new Meteor.Error(err.code, err.name, err.message)
         })
 
