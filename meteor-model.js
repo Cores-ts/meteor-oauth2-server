@@ -123,7 +123,7 @@ MeteorModel = (function () {
                     })
                     */
 
-                    var access_token = this.accessTokenCollection.insert({
+                    this.accessTokenCollection.insert({
                         accessToken: token.accessToken,
                         clientId: client.clientId,
                         userId: user.id,
@@ -131,7 +131,7 @@ MeteorModel = (function () {
                         scope: token.scope
                     })
 
-                    if (token.refreshToken) var refresh_token = this.refreshTokenCollection.insert({
+                    if (token.refreshToken) this.refreshTokenCollection.insert({
                         refreshToken: token.refreshToken,
                         clientId: client.clientId,
                         userId: user.id,
@@ -205,7 +205,6 @@ MeteorModel = (function () {
 
                     if (!code) callback("Authorization code not found or expired")
 
-                    console.log(code)
 
                     code.client = {
                         id: code.clientId
@@ -217,8 +216,6 @@ MeteorModel = (function () {
 
                     code.code = code.authorizationCode
 
-                    console.log(code)
-                    //return code
                     callback(null, code)
 
                 } catch (e) {
@@ -258,6 +255,8 @@ MeteorModel = (function () {
                         scope: authorizationCode.scope
                     })
 
+                    if (!codeId) callback("An error has ocurred generating the Authorization code")
+
                     callback(null, {
                         authorizationCode: authorizationCode.authorizationCode,
                         expiresAt: authorizationCode.expiresAt,
@@ -290,11 +289,11 @@ MeteorModel = (function () {
 
                 try {
 
-                    /*
+
                     this.authCodeCollection.remove({
                         authorizationCode: authorizationCode.authorizationCode
-                    });
-                    */
+                    })
+
 
                     callback(null, true)
 
@@ -334,9 +333,7 @@ MeteorModel = (function () {
                             id: token.userId
                         }
                     }
-                    console.log("SAVEDREFRESHTOKEN", data)
 
-                    //return token
                     callback(null, data)
 
                 } catch (e) {
@@ -359,6 +356,7 @@ MeteorModel = (function () {
 
                 console.log("[OAuth2Server]", "in validateScope (user: " + user + ",client: " + client + ",scope: " + scope.toString() + ")")
 
+                //TODO: engadir scopes desde a base de datos
                 const VALID_SCOPES = ["r_email", "r_basicprofile", "r_fullprofile", "r_contactinfo"]
 
                 try {
@@ -370,7 +368,6 @@ MeteorModel = (function () {
                     callback(null, scope)
 
                 } catch (e) {
-                    console.log("ERRORVALIDATESCOPE", e)
                     callback(e)
                 }
             },
@@ -392,6 +389,7 @@ MeteorModel = (function () {
                     return false
                 }
 
+                //TODO: engadir scopes desde a base de datos
                 const VALID_SCOPES = ["r_email", "r_basicprofile", "r_fullprofile", "r_contactinfo"]
 
                 try {
@@ -400,7 +398,6 @@ MeteorModel = (function () {
                     return requestedScopes.every(s => authorizedScopes.indexOf(s) >= 0)
 
                 } catch (e) {
-                    console.log("ERRORVALIDATESCOPE", e)
                     callback(e)
                 }
             },
