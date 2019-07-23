@@ -1,16 +1,16 @@
 // get the node modules.
-var express = Npm.require('express'),
-    bodyParser = Npm.require('body-parser'),
-    OAuth2Server = Npm.require('oauth2-server');
+var express = Npm.require("express"),
+    bodyParser = Npm.require("body-parser"),
+    OAuth2Server = Npm.require("oauth2-server")
 
-const Request = Npm.require('oauth2-server').Request;
-const Response = Npm.require('oauth2-server').Response;
+const Request = Npm.require("oauth2-server").Request
+const Response = Npm.require("oauth2-server").Response
 
 // configure the server-side collections. The rest of the collections
 // exist in common.js and are for both client and server.
-var accessTokenCollection = new Meteor.Collection('OAuth2AccessTokens');
+var accessTokenCollection = new Meteor.Collection("OAuth2AccessTokens")
 
-var debug = !!process.env.DEBUG_APP;
+var debug = !!process.env.DEBUG_APP
 
 // setup the node oauth2 model.
 var meteorModel = new MeteorModel(
@@ -19,45 +19,32 @@ var meteorModel = new MeteorModel(
     clientsCollection,
     authCodesCollection,
     debug
-);
+)
 
 const oauthserverOptions = {
     model: meteorModel,
-    grants: ['authorization_code'],
-    accessTokenLifetime: 60 * 60 * 24, // 24 hours, or 1 day
+    grants: ["authorization_code"],
+    accessTokenLifetime: 60 * 60 * 24 * 30, // 30 days
+    refreshTokenLifetime: 60 * 60 * 24 * 365, // 365 days
     allowEmptyState: true,
-    allowExtendedTokenAttributes: false
+    allowExtendedTokenAttributes: false,
+    allowBearerTokensInQueryString: true,
 }
 
 // setup the exported object.
-oauth.oauthserver = new OAuth2Server(oauthserverOptions);
+oauth.oauthserver = new OAuth2Server(oauthserverOptions)
 
-oauth.collections.accessToken = accessTokenCollection;
-oauth.collections.client = clientsCollection;
+oauth.collections.accessToken = accessTokenCollection
+oauth.collections.client = clientsCollection
 
 // configure a url handler for the /oauth/token path.
-var app = express();
+var app = express()
 
-app.use(bodyParser.json());
+app.use(bodyParser.json())
 
 app.use(bodyParser.urlencoded({
     extended: false
-}));
-/*
-app.use(oauth.oauthserver.authorize({
-    authenticateHandler: {
-        handle: req => {
-            console.log('Authenticate Handler Called')
-            console.group()
-            console.log('some_other_user_info_stuff:', req.body.some_other_user_info_stuff)
-            console.groupEnd()
-            return {
-                userId: 1
-            }
-        }
-    }
-}));
-*/
+}))
 
 /*
 // create check callback that returns the user.
@@ -84,13 +71,13 @@ app.use(
 */
 
 const transformRequestsNotUsingFormUrlencodedType = (req, res, next) => {
-    if (req.headers['content-type'] !== 'application/x-www-form-urlencoded' && req.method === 'POST') {
-        req.headers['content-type'] = 'application/x-www-form-urlencoded';
+    if (req.headers["content-type"] !== "application/x-www-form-urlencoded" && req.method === "POST") {
+        req.headers["content-type"] = "application/x-www-form-urlencoded"
         req.body = Object.assign({}, req.body, req.query)
     }
 
     next()
-};
+}
 /*
 app.all('/oauth/token',
     transformRequestsNotUsingFormUrlencodedType,
@@ -98,28 +85,76 @@ app.all('/oauth/token',
 );
 */
 // create check callback that returns the user.
-var checkTokenCallback = function (req, result) {
-    console.log("checkcallback>>>>>", req, result)
+var checkTokenCallback = function (err, result) {
+    console.log("checkTokenCallback>>>>>", err, result)
     return result
-};
+}
 
-app.all('/oauth/token',
+app.all("/oauth/token",
     function (req, res, next) {
-        let nreq = new Request(req);
-        let nres = new Response(res);
-        oauth.oauthserver.token(nreq, nres, {
-            authenticateHandler: {
-                handle: req => {
-                    return {
-                        userId: userId
-                    }
+        let nreq = new Request(req)
+        let nres = new Response(res)
+        oauth.oauthserver.token(nreq, nres, null)
+            .then((token) => {
+                // The resource owner granted the access request.
+                console.log("result", token)
+                let final_token = {
+                    token_type: "bearer",
+                    access_token: token.accessToken,
+                    //expires_in: Math.abs((new Date(token.accessTokenExpiresAt).getTime() - new Date.getTime()) / 1000),
+                    refresh_token: token.refreshToken,
+                    //refresh_token_expires_in: Math.abs((new Date(token.refreshTokenExpiresAt).getTime() - new Date.getTime()) / 1000),
+                    scope: token.scope.join(","),
+                    //id_token: "JWT token"
                 }
-            }
-        }, checkTokenCallback)
-    }
-);
+                res.status(200).send(final_token)
+            })
+            .catch((err) => {
+                // The request was invalid or not authorized.
+                console.log(err)
+                res.status(err.statusCode).send({
+                    sucess: false,
+                    error: err.message
+                })
+            })
 
-WebApp.rawConnectHandlers.use(app);
+    }
+)
+
+app.get("/oauth/getIdentity",
+    function (req, res, next) {
+        let nreq = new Request(req)
+        let nres = new Response(res)
+        oauth.oauthserver.authenticate(nreq, nres, null)
+            .then((token) => {
+                // The resource owner granted the access request.
+                console.log("result", token)
+                return Meteor.users.findOne(token.user.id, {
+                    fields: {
+                        "username": 1,
+                        "profile.name": 1,
+                        "profile.uavatar": 1
+                    }
+                })
+            })
+            .then((user) => {
+                // The resource owner granted the access request.
+                console.log("resultuser", user)
+                res.status(200).send(user)
+            })
+            .catch((err) => {
+                // The request was invalid or not authorized.
+                console.log(err)
+                res.status(err.statusCode).send({
+                    sucess: false,
+                    error: err.message
+                })
+            })
+
+    }
+)
+
+WebApp.rawConnectHandlers.use(app)
 
 /////////////////////
 // Configure really basic identity service
@@ -159,7 +194,7 @@ JsonRoutes.add('get', '/oauth/getIdentity', function (req, res, next) {
 ///////////////////
 Meteor.publish(oauth.pubSubNames.authCodes, function () {
     if (!this.userId) {
-        return this.ready();
+        return this.ready()
     }
 
     return oauth.collections.authCode.find({
@@ -167,12 +202,12 @@ Meteor.publish(oauth.pubSubNames.authCodes, function () {
         expires: {
             $gt: new Date()
         }
-    });
-});
+    })
+})
 
 Meteor.publish(oauth.pubSubNames.refreshTokens, function () {
     if (!this.userId) {
-        return this.ready();
+        return this.ready()
     }
 
     return oauth.collections.refreshToken.find({
@@ -180,45 +215,45 @@ Meteor.publish(oauth.pubSubNames.refreshTokens, function () {
         expires: {
             $gt: new Date()
         }
-    });
-});
+    })
+})
 
 Meteor.publish(oauth.pubSubNames.client, function () {
     //console.log('this', this, this.userId);
     if (!this.userId) {
-        return this.ready();
+        return this.ready()
     }
 
     return oauth.collections.client.find({
-        'owner.uid': this.userId
-    });
-});
+        "owner.uid": this.userId
+    })
+})
 
 ////////////
 // configure the meteor methods.
 //////////////
-var methods = {};
-methods[oauth.methodNames.authorize] = function (client_id, redirect_uri, response_type, scope, state) {
+var methods = {}
+methods[oauth.methodNames.authorize] = async function (client_id, redirect_uri, response_type, scope, state) {
 
     console.log("authorizemethid")
     // validate parameters.
-    check(client_id, String);
-    check(redirect_uri, String);
-    check(response_type, String);
-    check(scope, Match.Optional(Match.OneOf(null, [String])));
-    check(state, Match.Optional(Match.OneOf(null, String)));
+    check(client_id, String)
+    check(redirect_uri, String)
+    check(response_type, String)
+    check(scope, Match.Optional(Match.OneOf(null, [String])))
+    check(state, Match.Optional(Match.OneOf(null, String)))
 
     if (!scope) {
-        scope = [];
+        scope = []
     }
 
     // validate the user is authenticated.
-    var userId = this.userId;
+    var userId = this.userId
     if (!userId) {
         return {
             success: false,
-            error: 'User not authenticated.'
-        };
+            error: "User not authenticated."
+        }
     }
 
     // The oauth2-server project relies heavily on express to validate and
@@ -240,7 +275,7 @@ methods[oauth.methodNames.authorize] = function (client_id, redirect_uri, respon
     // run the auth code grant function in a synchronous manner.
 
     let req = new Request({
-        method: 'GET',
+        method: "GET",
         body: {
             client_id: client_id,
             response_type: response_type,
@@ -252,7 +287,7 @@ methods[oauth.methodNames.authorize] = function (client_id, redirect_uri, respon
         headers: {
             //Authorization: 'Bearer foobar'
         }
-    });
+    })
 
     let res = new Response({
         headers: {},
@@ -262,13 +297,14 @@ methods[oauth.methodNames.authorize] = function (client_id, redirect_uri, respon
             authorizationCode: null,
             redirectToUri: redirect_uri
         }
-    });
+    })
 
     // create check callback that returns the user.
-    var checkCallback = function (req, result) {
+    var checkCallback = function (error, result) {
         console.log("checkcallback>>>>>", req, result)
-        return result
-    };
+        if (error) callback(error)
+        callback(null, result)
+    }
 
     var resultFn = oauth.oauthserver.authorize(req, res, {
             authenticateHandler: {
@@ -278,7 +314,7 @@ methods[oauth.methodNames.authorize] = function (client_id, redirect_uri, respon
                     }
                 }
             }
-        }, checkCallback)
+        })
         .then(function (code) {
             console.log("CODE>>>", code, "RES>>>", res)
             if (code.authorizationCode) {
@@ -290,11 +326,14 @@ methods[oauth.methodNames.authorize] = function (client_id, redirect_uri, respon
         })
         .catch(function (err) {
             // handle error condition
+            //return err
             console.log("ERRORPROMISE", err)
-        });
+            throw new Meteor.Error(err.code, err.name, err.message)
+
+        })
 
     return resultFn
 
-};
+}
 
-Meteor.methods(methods);
+Meteor.methods(methods)

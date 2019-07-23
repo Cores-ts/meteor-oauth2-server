@@ -1,15 +1,15 @@
 oauth.subscribeTo = {
-    authCode: function() {
-        return Meteor.subscribe(oauth.pubSubNames.authCodes);
+    authCode: function () {
+        return Meteor.subscribe(oauth.pubSubNames.authCodes)
     },
-    refreshTokens: function() {
-        return Meteor.subscribe(oauth.pubSubNames.refreshTokens);
+    refreshTokens: function () {
+        return Meteor.subscribe(oauth.pubSubNames.refreshTokens)
     },
-    client: function() {
-        return Meteor.subscribe(oauth.pubSubNames.client);
+    client: function () {
+        return Meteor.subscribe(oauth.pubSubNames.client)
     }
 
-};
+}
 
 oauth.callMethod = {
     /**
@@ -21,7 +21,7 @@ oauth.callMethod = {
      * @param state : string - A state variable provided by the client. It will be added onto the redirectToUri.
      * @param callback
      */
-    authorize: function(client_id, redirect_uri, response_type, scope, state, callback) {
+    authorize: function (client_id, redirect_uri, response_type, scope, state, callback) {
         Meteor.call(
             oauth.methodNames.authorize,
             client_id,
@@ -30,7 +30,6 @@ oauth.callMethod = {
             scope,
             state,
             callback
-        );
+        )
     }
-};
-
+}
