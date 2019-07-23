@@ -100,7 +100,6 @@ app.all("/oauth/token",
             .catch((err) => {
                 // The request was invalid or not authorized.
                 res.status(err.statusCode).send({
-                    sucess: false,
                     error: err.message
                 })
             })
@@ -134,7 +133,6 @@ app.get("/oauth/getIdentity",
             .catch((err) => {
                 // The request was invalid or not authorized.
                 res.status(err.statusCode).send({
-                    sucess: false,
                     error: err.message
                 })
             })
@@ -164,7 +162,6 @@ app.get("/oauth/whoami",
             .catch((err) => {
                 // The request was invalid or not authorized.
                 res.status(err.statusCode).send({
-                    sucess: false,
                     error: err.message
                 })
             })
@@ -235,8 +232,7 @@ methods[oauth.methodNames.authorize] = async function (client_id, redirect_uri, 
     var userId = this.userId
     if (!userId) {
         return {
-            success: false,
-            error: "User not authenticated."
+            error: "User not authenticated"
         }
     }
 

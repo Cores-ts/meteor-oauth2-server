@@ -86,7 +86,7 @@ MeteorModel = (function () {
                         })
                     }
 
-                    if (!client) callback("Client not valid or inactive")
+                    if (!client) callback("invalid_client")
 
                     client.id = client.clientId
                     //client.redirectUris = [client.redirectUri]
@@ -203,7 +203,7 @@ MeteorModel = (function () {
                         authorizationCode: authorizationCode
                     })
 
-                    if (!code) callback("Authorization code not found or expired")
+                    if (!code) callback("invalid_grant")
 
 
                     code.client = {
@@ -320,7 +320,7 @@ MeteorModel = (function () {
                         refreshToken: refreshToken
                     })
 
-                    if (!token) callback("Refresh token not found or expired")
+                    if (!token) callback("invalid_grant")
 
                     var data = {
                         refreshToken: token.refreshToken,
