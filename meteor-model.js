@@ -37,7 +37,7 @@ MeteorModel = (function () {
                         accessToken: bearerToken
                     })
 
-                    if (!token) callback("Token not found or expired")
+                    if (!token) callback("unsupported_response_type")
 
                     var data = {
                         accessToken: token.accessToken,
@@ -205,7 +205,6 @@ MeteorModel = (function () {
 
                     if (!code) callback("invalid_grant")
 
-
                     code.client = {
                         id: code.clientId
                     }
@@ -255,7 +254,7 @@ MeteorModel = (function () {
                         scope: authorizationCode.scope
                     })
 
-                    if (!codeId) callback("An error has ocurred generating the Authorization code")
+                    if (!codeId) callback("temporarily_unavailable")
 
                     callback(null, {
                         authorizationCode: authorizationCode.authorizationCode,
@@ -289,11 +288,9 @@ MeteorModel = (function () {
 
                 try {
 
-
                     this.authCodeCollection.remove({
                         authorizationCode: authorizationCode.authorizationCode
                     })
-
 
                     callback(null, true)
 
