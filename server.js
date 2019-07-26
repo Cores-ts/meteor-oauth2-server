@@ -23,7 +23,7 @@ var meteorModel = new MeteorModel(
 
 const oauthserverOptions = {
     model: meteorModel,
-    grants: ["authorization_code"],
+    grants: ["authorization_code", "refresh_token", "client_credentials"],
     accessTokenLifetime: 60 * 60 * 24 * 30, // 30 days
     refreshTokenLifetime: 60 * 60 * 24 * 365, // 365 days
     allowEmptyState: true,
@@ -37,7 +37,6 @@ oauth.oauthserver = new OAuth2Server(oauthserverOptions)
 oauth.collections.accessToken = accessTokenCollection
 oauth.collections.client = clientsCollection
 
-// configure a url handler for the /oauth/token path.
 var app = express()
 
 app.use(bodyParser.json())
@@ -45,6 +44,14 @@ app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({
     extended: false
 }))
+
+app.use((req, res, next) => {
+    if (req.headers["content-type"] !== "application/x-www-form-urlencoded" && req.method === "POST") {
+        req.headers["content-type"] = "application/x-www-form-urlencoded";
+        req.body = Object.assign({}, req.body, req.query);
+    }
+    next()
+})
 
 /*
 // create check callback that returns the user.
@@ -70,36 +77,42 @@ app.use(
 );
 */
 
-const transformRequestsNotUsingFormUrlencodedType = (req, res, next) => {
-    if (req.headers["content-type"] !== "application/x-www-form-urlencoded" && req.method === "POST") {
-        req.headers["content-type"] = "application/x-www-form-urlencoded"
-        req.body = Object.assign({}, req.body, req.query)
-    }
-
-    next()
-}
-
-app.all("/oauth/token",
+// configure a url handler for the /oauth/token path.
+app.all(["/oauth/token", "/auth/token"],
     function (req, res) {
         let nreq = new Request(req)
         let nres = new Response(res)
         oauth.oauthserver.token(nreq, nres, null)
             .then((token) => {
+                console.log(token)
+
+                console.log("ts", Date.parse(token.accessTokenExpiresAt), new Date(token.accessTokenExpiresAt).getTime())
                 // The resource owner granted the access request.
                 let final_token = {
                     token_type: "bearer",
                     access_token: token.accessToken,
-                    //expires_in: Math.abs((new Date(token.accessTokenExpiresAt).getTime() - new Date.getTime()) / 1000),
-                    refresh_token: token.refreshToken,
-                    //refresh_token_expires_in: Math.abs((new Date(token.refreshTokenExpiresAt).getTime() - new Date.getTime()) / 1000),
-                    scope: token.scope.join(","),
-                    //id_token: "JWT token"
+                    expires_in: Math.ceil((Date.parse(token.accessTokenExpiresAt) - new Date().getTime()) / 1000)
                 }
+
+                if (token.refreshToken) {
+                    final_token.refresh_token = token.refreshToken
+                    final_token.refresh_token_expires_in = Math.ceil((Date.parse(token.refreshTokenExpiresAt) - new Date().getTime()) / 1000)
+                }
+
+                if (token.scope && token.scope.isArray) {
+                    final_token.scope = token.scope.join(",")
+                } else if (token.scope) {
+                    final_token.scope = token.scope
+                }
+
+                //id_token: "JWT token"
+
                 res.status(200).send(final_token)
             })
             .catch((err) => {
                 // The request was invalid or not authorized.
-                res.status(err.statusCode).send({
+                console.log(err)
+                res.status(err.statusCode || 503).send({
                     error: err.message
                 })
             })
@@ -111,14 +124,19 @@ app.all("/oauth/token",
 // Configure really basic identity service
 ////////////////////
 
-app.get("/oauth/getIdentity",
+app.get(["/auth/whoami", "/oauth/whoami", "/auth/getIdentity", "/oauth/getIdentity"],
     function (req, res) {
         let nreq = new Request(req)
         let nres = new Response(res)
-        oauth.oauthserver.authenticate(nreq, nres, null)
+        let options = {
+            scope: "r_accountinfo"
+        }
+
+        oauth.oauthserver.authenticate(nreq, nres, options)
             .then((token) => {
-                // The resource owner granted the access request.
-                return Meteor.users.findOne(token.user.id, {
+                return Meteor.users.rawCollection().findOne({
+                    _id: token.user.id
+                }, {
                     fields: {
                         "username": 1,
                         "profile.name": 1,
@@ -132,38 +150,74 @@ app.get("/oauth/getIdentity",
             })
             .catch((err) => {
                 // The request was invalid or not authorized.
-                res.status(err.statusCode).send({
-                    error: err.message
-                })
+                console.log(err)
+                if (err.statusCode) {
+                    res.status(err.statusCode).send({
+                        error: err.message
+                    })
+                } else {
+                    res.status(503).send({
+                        error: "unexpected_error"
+                    })
+                }
             })
 
     }
 )
 
-app.get("/oauth/whoami",
+app.get(["/auth/whoami/permissions", "/oauth/whoami/permissions"],
     function (req, res) {
         let nreq = new Request(req)
         let nres = new Response(res)
-        oauth.oauthserver.authenticate(nreq, nres, null)
+
+        oauth.oauthserver.authenticate(nreq, nres)
             .then((token) => {
-                // The resource owner granted the access request.
-                return Meteor.users.findOne(token.user.id, {
-                    fields: {
-                        "username": 1,
-                        "profile.name": 1,
-                        "profile.uavatar": 1
-                    }
+                res.status(200).send({
+                    scope: token.scope
                 })
-            })
-            .then((user) => {
-                // The resource owner granted the access request.
-                res.status(200).send(user)
             })
             .catch((err) => {
                 // The request was invalid or not authorized.
-                res.status(err.statusCode).send({
-                    error: err.message
-                })
+                console.log(err)
+                if (err.statusCode) {
+                    res.status(err.statusCode).send({
+                        error: err.message
+                    })
+                } else {
+                    res.status(503).send({
+                        error: "unexpected_error"
+                    })
+                }
+            })
+
+    }
+)
+
+app.get(["/auth/debug_token", "/oauth/debug_token"],
+    function (req, res) {
+        let nreq = new Request(req)
+        let nres = new Response(res)
+
+        oauth.oauthserver.authenticate(nreq, nres)
+            .then((token) => {
+                token.client_id = token.client.id
+                token.user_id = token.user.id
+                delete token.user
+                delete token.client
+                res.status(200).send(token)
+            })
+            .catch((err) => {
+                // The request was invalid or not authorized.
+                console.log(err)
+                if (err.statusCode) {
+                    res.status(err.statusCode).send({
+                        error: err.message
+                    })
+                } else {
+                    res.status(503).send({
+                        error: "unexpected_error"
+                    })
+                }
             })
 
     }
@@ -221,7 +275,7 @@ methods[oauth.methodNames.authorize] = async function (client_id, redirect_uri, 
     check(client_id, String)
     check(redirect_uri, String)
     check(response_type, String)
-    check(scope, Match.Optional(Match.OneOf(null, [String])))
+    check(scope, Match.Optional(Match.OneOf(null, String)))
     check(state, Match.Optional(Match.OneOf(null, String)))
 
     if (!scope) {
@@ -235,23 +289,6 @@ methods[oauth.methodNames.authorize] = async function (client_id, redirect_uri, 
             error: "User not authenticated"
         }
     }
-
-    // The oauth2-server project relies heavily on express to validate and
-    // manipulate the oauth2 grant. A forthcoming version will abstract this
-    // behaviour into promises.
-    // That being the case, we need to get run an authorization grant as if
-    // it were a promise. Warning, the following code is difficult to follow.
-    // What we are doing is mocking and express app but never attaching it to
-    // Meteor. This allows oauth2-server to behave as it would as if it was
-    // natively attached to the webapp. The following code mocks express,
-    // request, response, check and next in order to retrive the data we need.
-    // Further, we are also running this in a synchronous manner. Enjoy! :)
-
-    // retrieve the grant function from oauth2-server. This method setups up the
-    // this context and such. The returned method is what express would normally
-    // expect when handling a URL. eg. function(req, res, next)
-
-    // run the auth code grant function in a synchronous manner.
 
     let req = new Request({
         method: "GET",
@@ -273,6 +310,7 @@ methods[oauth.methodNames.authorize] = async function (client_id, redirect_uri, 
         body: {
             success: false,
             error: null,
+            state: state,
             authorizationCode: null,
             redirectToUri: redirect_uri
         }
@@ -289,6 +327,7 @@ methods[oauth.methodNames.authorize] = async function (client_id, redirect_uri, 
         })
         .then(function (code) {
             if (code.authorizationCode) {
+                res.body.authorizationCode = code.authorizationCode
                 res.body.success = true
                 delete res.body.error
             }

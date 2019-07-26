@@ -28,13 +28,13 @@ clientsCollection = new Meteor.Collection("OAuth2Clients")
 
 clientsCollection.allow({
     insert: function () {
-        return true
+        return false
     },
     update: function () {
-        return true
+        return false
     },
     remove: function () {
-        return true
+        return false
     }
 })
 

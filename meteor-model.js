@@ -94,7 +94,6 @@ MeteorModel = (function () {
                     client.accessTokenLifetime = 60 * 60 * 24 * 30
                     client.refreshTokenLifetime = 60 * 60 * 24 * 365
 
-                    console.log(client)
                     callback(null, client)
 
                 } catch (e) {
@@ -109,6 +108,37 @@ MeteorModel = (function () {
         this.getClient =
             function (clientId, clientSecret, callback) {
                 getClientFn(clientId, clientSecret, callback)
+            }
+
+        const getUserFromClientFn = Meteor.bindEnvironment(
+            function (client, callback) {
+
+                console.log("[OAuth2Server]", "in getUserFromClient (clientId:", client, ")")
+
+                try {
+
+                    if (!client.owner) callback("invalid_client")
+
+                    callback(null, {
+
+                        id: client.owner.uid,
+                        username: client.owner.uname
+
+                    })
+
+                } catch (e) {
+                    callback(e)
+                    //return e
+                }
+            },
+            null, // exception handler
+            this // this context.
+        )
+
+        this.getUserFromClient =
+            function (client, callback) {
+                console.log("getUserFromClient", client)
+                getUserFromClientFn(client, callback)
             }
 
         const saveTokenFn = Meteor.bindEnvironment(
@@ -128,7 +158,7 @@ MeteorModel = (function () {
                         clientId: client.clientId,
                         userId: user.id,
                         expiresAt: token.accessTokenExpiresAt,
-                        scope: token.scope
+                        scope: token.scope.split(/[\s,]+/)
                     })
 
                     if (token.refreshToken) this.refreshTokenCollection.insert({
@@ -136,7 +166,7 @@ MeteorModel = (function () {
                         clientId: client.clientId,
                         userId: user.id,
                         expiresAt: token.refreshTokenExpiresAt,
-                        scope: token.scope
+                        scope: token.scope.split(/[\s,]+/)
                     })
 
                     var data = {
@@ -213,6 +243,8 @@ MeteorModel = (function () {
                         id: code.userId
                     }
 
+                    code.scope = code.scope.join(",")
+
                     code.code = code.authorizationCode
 
                     callback(null, code)
@@ -251,7 +283,7 @@ MeteorModel = (function () {
                         userId: user.userId,
                         redirectUri: authorizationCode.redirectUri,
                         expiresAt: authorizationCode.expiresAt,
-                        scope: authorizationCode.scope
+                        scope: authorizationCode.scope.split(/[\s,]+/)
                     })
 
                     if (!codeId) callback("temporarily_unavailable")
@@ -322,7 +354,7 @@ MeteorModel = (function () {
                     var data = {
                         refreshToken: token.refreshToken,
                         refreshTokenExpiresAt: token.expiresAt,
-                        scope: token.scope,
+                        scope: token.scope.join(","),
                         client: {
                             id: token.clientId
                         },
@@ -351,18 +383,30 @@ MeteorModel = (function () {
 
                 //Invoked to check if the requested scope is valid for a particular client/user combination.
 
-                console.log("[OAuth2Server]", "in validateScope (user: " + user + ",client: " + client + ",scope: " + scope.toString() + ")")
+                console.log("[OAuth2Server]", "in validateScope (user: " + user + ",client: " + client + ",scope: " + scope + ")")
 
                 //TODO: engadir scopes desde a base de datos
-                const VALID_SCOPES = ["r_email", "r_basicprofile", "r_fullprofile", "r_contactinfo"]
+                const VALID_SCOPES = ["r_accountinfo", "r_email", "r_basicprofile", "r_fullprofile", "r_contactinfo"]
 
                 try {
-                    if (!scope.toString().split(/[\s,]+/).every(s => VALID_SCOPES.indexOf(s) >= 0)) {
-                        //return false;
-                        callback(null, false)
+                    //Cómo aceptamos scope como parámetro opcional en client_credentials si hay que validarlo???
+                    if (!scope) callback(null, "r_accountinfo")
+
+                    if (scope && scope.isArray) {
+                        if (!scope.every(s => VALID_SCOPES.indexOf(s) >= 0)) {
+                            //return false;
+                            callback(null, false)
+                        }
+                        callback(null, scope.join(" "))
+                    } else if (scope) {
+                        if (!scope.split(/[\s,]+/).every(s => VALID_SCOPES.indexOf(s) >= 0)) {
+                            //return false;
+                            callback(null, false)
+                        }
+                        callback(null, scope)
                     }
+
                     //return scope
-                    callback(null, scope)
 
                 } catch (e) {
                     callback(e)
@@ -380,20 +424,18 @@ MeteorModel = (function () {
         const verifyScopeFn = Meteor.bindEnvironment(
             function (accessToken, scope, callback) {
                 //Invoked during request authentication to check if the provided access token was authorized the requested scopes.
-                console.log("[OAuth2Server]", "in verifyScope (accessToken: " + accessToken + ",scope: " + scope.toString() + ")")
-
+                console.log("[OAuth2Server]", "in verifyScope (accessToken: " + accessToken + ",scope: " + scope + ")")
+                console.log(accessToken.scope)
                 if (!accessToken.scope) {
                     return false
                 }
 
-                //TODO: engadir scopes desde a base de datos
-                const VALID_SCOPES = ["r_email", "r_basicprofile", "r_fullprofile", "r_contactinfo"]
-
                 try {
-                    let requestedScopes = scope.toString().split(/[\s,]+/)
-                    let authorizedScopes = accessToken.scope.split(/[\s,]+/)
-                    return requestedScopes.every(s => authorizedScopes.indexOf(s) >= 0)
-
+                    let requestedScopes = scope.split(/[\s,]+/)
+                    let authorizedScopes = accessToken.scope
+                    let verified = requestedScopes.every(s => authorizedScopes.indexOf(s) >= 0)
+                    console.log(verified)
+                    callback(null, verified)
                 } catch (e) {
                     callback(e)
                 }
