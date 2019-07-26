@@ -129,7 +129,7 @@ app.get(["/auth/whoami", "/oauth/whoami", "/auth/getIdentity", "/oauth/getIdenti
         let nreq = new Request(req)
         let nres = new Response(res)
         let options = {
-            scope: "r_accountinfo"
+            scope: "default"
         }
 
         oauth.oauthserver.authenticate(nreq, nres, options)
