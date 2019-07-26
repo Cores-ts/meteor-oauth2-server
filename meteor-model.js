@@ -386,11 +386,24 @@ MeteorModel = (function () {
                 console.log("[OAuth2Server]", "in validateScope (user: " + user + ",client: " + client + ",scope: " + scope + ")")
 
                 //TODO: engadir scopes desde a base de datos
-                const VALID_SCOPES = ["default", "r_email", "r_emails", "r_basicprofile", "r_fullprofile", "r_contactinfo"]
+                //const VALID_SCOPES = ["default", "r_email", "r_emails", "r_basicprofile", "r_fullprofile", "r_contactinfo"]
 
                 try {
+                    //TODO: configurar esto en la inicialización del módulo
+                    const VALID_SCOPES = OAuth2Scopes.find().fetch().map(function (obj) {
+                        return obj.slug
+                    })
+
+                    const DEFAULT_SCOPES = OAuth2Scopes.find({
+                        required: true
+                    }).fetch().map(function (obj) {
+                        return obj.slug
+                    })
+
+                    console.log(VALID_SCOPES, DEFAULT_SCOPES)
+
                     //Cómo aceptamos scope como parámetro opcional en client_credentials si hay que validarlo???
-                    if (!scope) callback(null, "default")
+                    if (!scope) callback(null, DEFAULT_SCOPES)
 
                     if (scope && scope.isArray) {
                         if (!scope.every(s => VALID_SCOPES.indexOf(s) >= 0)) {
