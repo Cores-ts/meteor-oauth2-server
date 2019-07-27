@@ -403,7 +403,10 @@ MeteorModel = (function () {
                     console.log(VALID_SCOPES, DEFAULT_SCOPES)
 
                     //Cómo aceptamos scope como parámetro opcional en client_credentials si hay que validarlo???
+                    //If no scope is defined we'll add the default scopes
                     if (!scope) callback(null, DEFAULT_SCOPES)
+
+                    //Allows partially valid scopes. ie "valid valid2 notvalid" returns "valid valid2"
 
                     if (scope && scope.isArray) {
                         if (!scope.every(s => VALID_SCOPES.indexOf(s) >= 0)) {
@@ -412,11 +415,11 @@ MeteorModel = (function () {
                         }
                         callback(null, scope.join(" "))
                     } else if (scope) {
-                        if (!scope.split(/[\s,]+/).every(s => VALID_SCOPES.indexOf(s) >= 0)) {
+                        if (!scope.split(/[\s,]+/).filter(s => VALID_SCOPES.indexOf(s) >= 0)) {
                             //return false;
                             callback(null, false)
                         }
-                        callback(null, scope)
+                        callback(null, scope.join(" "))
                     }
 
                     //return scope
@@ -446,9 +449,9 @@ MeteorModel = (function () {
                 try {
                     let requestedScopes = scope.split(/[\s,]+/)
                     let authorizedScopes = accessToken.scope
-                    let verified = requestedScopes.every(s => authorizedScopes.indexOf(s) >= 0)
-                    console.log(verified)
-                    callback(null, verified)
+                    let verified = requestedScopes.filter(s => authorizedScopes.indexOf(s) >= 0)
+                    console.log(verified.join(" "))
+                    callback(null, verified.join(" "))
                 } catch (e) {
                     callback(e)
                 }
