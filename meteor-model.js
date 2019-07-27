@@ -409,13 +409,13 @@ MeteorModel = (function () {
                     //Allows partially valid scopes. ie "valid valid2 notvalid" returns "valid valid2"
                     //Adding _.uniq to remove potential duplicates
                     if (scope && scope.isArray) {
-                        if (!_.uniq(scope.filter(s => VALID_SCOPES.indexOf(s) >= 0))) {
+                        if (!_.uniq(scope.filter(s => VALID_SCOPES.indexOf(s.split(":")[0]) >= 0))) {
                             //return false;
                             callback(null, false)
                         }
                         callback(null, scope.join(" "))
                     } else if (scope) {
-                        if (!_.uniq(scope.split(/[\s,]+/).filter(s => VALID_SCOPES.indexOf(s) >= 0))) {
+                        if (!_.uniq(scope.split(/[\s,]+/).filter(s => VALID_SCOPES.indexOf(s.split(":")[0]) >= 0))) {
                             //return false;
                             callback(null, false)
                         }
@@ -449,7 +449,7 @@ MeteorModel = (function () {
                 try {
                     let requestedScopes = scope.split(/[\s,]+/)
                     let authorizedScopes = accessToken.scope
-                    let verified = _.uniq(requestedScopes.filter(s => authorizedScopes.indexOf(s) >= 0))
+                    let verified = _.uniq(requestedScopes.filter(s => authorizedScopes.indexOf(s.split(":")[0]) >= 0))
                     console.log(verified.join(" "))
                     callback(null, verified.join(" "))
                 } catch (e) {
