@@ -394,6 +394,8 @@ MeteorModel = (function () {
                         return obj.slug
                     })
 
+                    //TODO: comprobar client scopes
+
                     const DEFAULT_SCOPES = OAuth2Scopes.find({
                         required: true
                     }).fetch().map(function (obj) {
@@ -419,7 +421,7 @@ MeteorModel = (function () {
                             //return false;
                             callback(null, false)
                         }
-                        callback(null, scope.join(" "))
+                        callback(null, scope)
                     }
 
                     //return scope
