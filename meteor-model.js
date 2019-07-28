@@ -137,7 +137,6 @@ MeteorModel = (function () {
 
         this.getUserFromClient =
             function (client, callback) {
-                console.log("getUserFromClient", client)
                 getUserFromClientFn(client, callback)
             }
 
@@ -146,12 +145,22 @@ MeteorModel = (function () {
                 console.log("[OAuth2Server]", "in saveToken (token:", token, ", client:", client, ", user:", user, ")")
 
                 try {
-                    /*
-                    this.refreshTokenCollection.remove({
-                        clientId: clientId,
-                        userId: user.id
+
+                    if (token.refreshToken) this.refreshTokenCollection.remove({
+                        clientId: client.clientId,
+                        userId: user.id,
+                        refreshToken: {
+                            $ne: token.refreshToken
+                        }
                     })
-                    */
+
+                    this.accessTokenCollection.remove({
+                        clientId: client.clientId,
+                        userId: user.id,
+                        accessToken: {
+                            $ne: token.accessToken
+                        }
+                    })
 
                     this.accessTokenCollection.insert({
                         accessToken: token.accessToken,
@@ -182,7 +191,7 @@ MeteorModel = (function () {
                             id: user.id
                         }
                     }
-                    console.log("SAVEDREFRESHTOKEN", data)
+
                     callback(null, data)
 
                 } catch (e) {
@@ -266,16 +275,20 @@ MeteorModel = (function () {
             function (authorizationCode, client, user, callback) {
 
                 try {
+
                     /*
                     this.authCodeCollection.remove({
                         authorizationCode: authorizationCode.authorizationCode
-                    });
+                    })
+                    */
 
                     this.authCodeCollection.remove({
                         clientId: client.clientId,
-                        userId: user.userId
+                        userId: user.userId,
+                        expiresAt: {
+                            $gt: new Date()
+                        }
                     })
-                    */
 
                     var codeId = this.authCodeCollection.insert({
                         authorizationCode: authorizationCode.authorizationCode,
@@ -386,7 +399,7 @@ MeteorModel = (function () {
                 console.log("[OAuth2Server]", "in validateScope (user: " + user + ",client: " + client + ",scope: " + scope + ")")
 
                 //TODO: engadir scopes desde a base de datos
-                //const VALID_SCOPES = ["default", "r_email", "r_emails", "r_basicprofile", "r_fullprofile", "r_contactinfo"]
+                //const VALID_SCOPES = ["identity.basic", "identity.email", "identity.profile", "r_basicprofile", "r_fullprofile", "r_contactinfo"]
 
                 try {
                     //TODO: configurar esto en la inicialización del módulo
@@ -443,7 +456,7 @@ MeteorModel = (function () {
             function (accessToken, scope, callback) {
                 //Invoked during request authentication to check if the provided access token was authorized the requested scopes.
                 console.log("[OAuth2Server]", "in verifyScope (accessToken: " + accessToken + ",scope: " + scope + ")")
-                console.log(accessToken.scope)
+
                 if (!accessToken.scope) {
                     return false
                 }
@@ -452,7 +465,6 @@ MeteorModel = (function () {
                     let requestedScopes = scope.split(/[\s,]+/)
                     let authorizedScopes = accessToken.scope
                     let verified = _.uniq(requestedScopes.filter(s => authorizedScopes.indexOf(s.split("@")[0]) >= 0))
-                    console.log(verified.join(" "))
                     callback(null, verified.join(" "))
                 } catch (e) {
                     callback(e)

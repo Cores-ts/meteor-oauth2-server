@@ -78,7 +78,7 @@ app.use(
 */
 
 // configure a url handler for the /oauth/token path.
-app.all(["/oauth/token", "/auth/token"],
+app.all(["/token"],
     function (req, res) {
         let nreq = new Request(req)
         let nres = new Response(res)
@@ -124,12 +124,12 @@ app.all(["/oauth/token", "/auth/token"],
 // Configure really basic identity service
 ////////////////////
 
-app.get(["/auth/whoami", "/oauth/whoami", "/auth/getIdentity", "/oauth/getIdentity"],
+app.get(["/whoami"],
     function (req, res) {
         let nreq = new Request(req)
         let nres = new Response(res)
         let options = {
-            scope: "default"
+            scope: "identity.basic"
         }
 
         oauth.oauthserver.authenticate(nreq, nres, options)
@@ -165,7 +165,7 @@ app.get(["/auth/whoami", "/oauth/whoami", "/auth/getIdentity", "/oauth/getIdenti
     }
 )
 
-app.get(["/auth/whoami/permissions", "/oauth/whoami/permissions"],
+app.get(["/token/permissions"],
     function (req, res) {
         let nreq = new Request(req)
         let nres = new Response(res)
@@ -178,7 +178,6 @@ app.get(["/auth/whoami/permissions", "/oauth/whoami/permissions"],
             })
             .catch((err) => {
                 // The request was invalid or not authorized.
-                console.log(err)
                 if (err.statusCode) {
                     res.status(err.statusCode).send({
                         error: err.message
@@ -193,7 +192,7 @@ app.get(["/auth/whoami/permissions", "/oauth/whoami/permissions"],
     }
 )
 
-app.get(["/auth/debug_token", "/oauth/debug_token"],
+app.get(["/token/debug"],
     function (req, res) {
         let nreq = new Request(req)
         let nres = new Response(res)
@@ -208,7 +207,6 @@ app.get(["/auth/debug_token", "/oauth/debug_token"],
             })
             .catch((err) => {
                 // The request was invalid or not authorized.
-                console.log(err)
                 if (err.statusCode) {
                     res.status(err.statusCode).send({
                         error: err.message
