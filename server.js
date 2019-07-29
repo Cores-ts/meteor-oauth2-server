@@ -1,14 +1,16 @@
 // get the node modules.
-var express = Npm.require('express'),
-    bodyParser = Npm.require('body-parser'),
-    oauthserver = Npm.require('oauth2-server');
+var express = Npm.require("express"),
+    bodyParser = Npm.require("body-parser"),
+    OAuth2Server = Npm.require("oauth2-server")
 
+const Request = Npm.require("oauth2-server").Request
+const Response = Npm.require("oauth2-server").Response
 
 // configure the server-side collections. The rest of the collections
 // exist in common.js and are for both client and server.
-var accessTokenCollection = new Meteor.Collection('OAuth2AccessTokens');
-var clientsCollection = new Meteor.Collection('OAuth2Clients');
+var accessTokenCollection = new Meteor.Collection("OAuth2AccessTokens")
 
+var debug = !!process.env.DEBUG_APP
 
 // setup the node oauth2 model.
 var meteorModel = new MeteorModel(
@@ -16,222 +18,326 @@ var meteorModel = new MeteorModel(
     refreshTokensCollection,
     clientsCollection,
     authCodesCollection,
-    true
-);
+    debug
+)
 
+const oauthserverOptions = {
+    model: meteorModel,
+    grants: ["authorization_code", "refresh_token", "client_credentials"],
+    accessTokenLifetime: 60 * 60 * 24 * 30, // 30 days
+    refreshTokenLifetime: 60 * 60 * 24 * 365, // 365 days
+    allowEmptyState: true,
+    allowExtendedTokenAttributes: false,
+    allowBearerTokensInQueryString: true,
+}
 
 // setup the exported object.
-oAuth2Server.oauthserver = oauthserver({
-    model: meteorModel,
-    grants: ['authorization_code'],
-    debug: true
-});
+oauth.oauthserver = new OAuth2Server(oauthserverOptions)
 
-oAuth2Server.collections.accessToken = accessTokenCollection;
-oAuth2Server.collections.client = clientsCollection;
+oauth.collections.accessToken = accessTokenCollection
+oauth.collections.client = clientsCollection
 
-// configure a url handler for the /oauth/token path.
-var app = express();
+var app = express()
 
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
+app.use(bodyParser.json())
 
-const transformRequestsNotUsingFormUrlencodedType = (req, res, next) => {
-    if (req.headers['content-type'] !== 'application/x-www-form-urlencoded' && req.method === 'POST') {
-        req.headers['content-type'] = 'application/x-www-form-urlencoded';
-        req.body = Object.assign({}, req.body, req.query)
+app.use(bodyParser.urlencoded({
+    extended: false
+}))
+
+app.use((req, res, next) => {
+    if (req.headers["content-type"] !== "application/x-www-form-urlencoded" && req.method === "POST") {
+        req.headers["content-type"] = "application/x-www-form-urlencoded";
+        req.body = Object.assign({}, req.body, req.query);
     }
-
     next()
+})
+
+/*
+// create check callback that returns the user.
+var checkAUTHCallback = function (req, result) {
+    console.log("checkAUTHCallback>>>>>", req, result)
+    return result
 };
 
-app.all('/oauth/token',
-    transformRequestsNotUsingFormUrlencodedType,
-    oAuth2Server.oauthserver.grant(),
-    oAuth2Server.oauthserver.errorHandler()
+app.use(
+    function (req, res, next) {
+        let nreq = new Request(req);
+        let nres = new Response(res);
+        oauth.oauthserver.authorize(nreq, nres, {
+            authenticateHandler: {
+                handle: req => {
+                    return {
+                        userId: userId
+                    }
+                }
+            }
+        }, checkAUTHCallback)
+    }
 );
+*/
 
-WebApp.rawConnectHandlers.use(app);
+// configure a url handler for the /oauth/token path.
+app.all(["/token"],
+    function (req, res) {
+        let nreq = new Request(req)
+        let nres = new Response(res)
+        oauth.oauthserver.token(nreq, nres, null)
+            .then((token) => {
+                console.log(token)
 
+                console.log("ts", Date.parse(token.accessTokenExpiresAt), new Date(token.accessTokenExpiresAt).getTime())
+                // The resource owner granted the access request.
+                let final_token = {
+                    token_type: "bearer",
+                    access_token: token.accessToken,
+                    expires_in: Math.ceil((Date.parse(token.accessTokenExpiresAt) - new Date().getTime()) / 1000)
+                }
+
+                if (token.refreshToken) {
+                    final_token.refresh_token = token.refreshToken
+                    final_token.refresh_token_expires_in = Math.ceil((Date.parse(token.refreshTokenExpiresAt) - new Date().getTime()) / 1000)
+                }
+
+                if (token.scope && token.scope.isArray) {
+                    final_token.scope = token.scope.join(",")
+                } else if (token.scope) {
+                    final_token.scope = token.scope
+                }
+
+                //id_token: "JWT token"
+
+                res.status(200).send(final_token)
+            })
+            .catch((err) => {
+                // The request was invalid or not authorized.
+                console.log(err)
+                res.status(err.statusCode || 503).send({
+                    error: err.message
+                })
+            })
+
+    }
+)
 
 /////////////////////
 // Configure really basic identity service
 ////////////////////
-JsonRoutes.Middleware.use(
-    '/oauth/getIdentity',
-    oAuth2Server.oauthserver.authorise()
-);
 
-JsonRoutes.add('get', '/oauth/getIdentity', function(req, res, next) {
-    console.log('GET /oauth/getIdentity');
-
-    var accessTokenStr = (req.params && req.params.access_token) || (req.query && req.query.access_token);
-    var accessToken = oAuth2Server.collections.accessToken.findOne({accessToken: accessTokenStr});
-    var user = Meteor.users.findOne(accessToken.userId);
-
-    JsonRoutes.sendResult(
-        res,
-        {
-            data: {
-                id: user._id,
-                email: user.emails[0].address
-            }
+app.get(["/whoami"],
+    function (req, res) {
+        let nreq = new Request(req)
+        let nres = new Response(res)
+        let options = {
+            scope: "identity.basic"
         }
-    );
-});
 
+        oauth.oauthserver.authenticate(nreq, nres, options)
+            .then((token) => {
+                return Meteor.users.rawCollection().findOne({
+                    _id: token.user.id
+                }, {
+                    fields: {
+                        "username": 1,
+                        "profile.name": 1,
+                        "profile.uavatar": 1
+                    }
+                })
+            })
+            .then((user) => {
+                // The resource owner granted the access request.
+                res.status(200).send(user)
+            })
+            .catch((err) => {
+                // The request was invalid or not authorized.
+                console.log(err)
+                if (err.statusCode) {
+                    res.status(err.statusCode).send({
+                        error: err.message
+                    })
+                } else {
+                    res.status(503).send({
+                        error: "unexpected_error"
+                    })
+                }
+            })
 
+    }
+)
+
+app.get(["/token/permissions"],
+    function (req, res) {
+        let nreq = new Request(req)
+        let nres = new Response(res)
+
+        oauth.oauthserver.authenticate(nreq, nres)
+            .then((token) => {
+                res.status(200).send({
+                    scope: token.scope
+                })
+            })
+            .catch((err) => {
+                // The request was invalid or not authorized.
+                if (err.statusCode) {
+                    res.status(err.statusCode).send({
+                        error: err.message
+                    })
+                } else {
+                    res.status(503).send({
+                        error: "unexpected_error"
+                    })
+                }
+            })
+
+    }
+)
+
+app.get(["/token/debug"],
+    function (req, res) {
+        let nreq = new Request(req)
+        let nres = new Response(res)
+
+        oauth.oauthserver.authenticate(nreq, nres)
+            .then((token) => {
+                token.client_id = token.client.id
+                token.user_id = token.user.id
+                delete token.user
+                delete token.client
+                res.status(200).send(token)
+            })
+            .catch((err) => {
+                // The request was invalid or not authorized.
+                if (err.statusCode) {
+                    res.status(err.statusCode).send({
+                        error: err.message
+                    })
+                } else {
+                    res.status(503).send({
+                        error: "unexpected_error"
+                    })
+                }
+            })
+
+    }
+)
+
+WebApp.rawConnectHandlers.use(app)
 
 ////////////////////
 // Meteor publish.
 ///////////////////
-Meteor.publish(oAuth2Server.pubSubNames.authCodes, function() {
+Meteor.publish(oauth.pubSubNames.authCodes, function () {
     if (!this.userId) {
-        return this.ready();
+        return this.ready()
     }
 
-    return oAuth2Server.collections.authCode.find({
+    return oauth.collections.authCode.find({
         userId: this.userId,
         expires: {
             $gt: new Date()
         }
-    });
-});
+    })
+})
 
-Meteor.publish(oAuth2Server.pubSubNames.refreshTokens, function() {
+Meteor.publish(oauth.pubSubNames.refreshTokens, function () {
     if (!this.userId) {
-        return this.ready();
+        return this.ready()
     }
 
-    return oAuth2Server.collections.refreshToken.find({
+    return oauth.collections.refreshToken.find({
         userId: this.userId,
         expires: {
             $gt: new Date()
         }
-    });
-});
+    })
+})
+
+Meteor.publish(oauth.pubSubNames.client, function () {
+    if (!this.userId) {
+        return this.ready()
+    }
+
+    return oauth.collections.client.find({
+        "owner.uid": this.userId
+    })
+})
 
 ////////////
 // configure the meteor methods.
 //////////////
-var methods = {};
-methods[oAuth2Server.methodNames.authCodeGrant] = function(clientId, redirectUri, responseType, scope, state) {
+var methods = {}
+methods[oauth.methodNames.authorize] = async function (client_id, redirect_uri, response_type, scope, state) {
+
+    console.log("authorizemethod")
     // validate parameters.
-    check(clientId, String);
-    check(redirectUri, String);
-    check(responseType, String);
-    check(scope, Match.Optional(Match.OneOf(null, [String])));
-    check(state, Match.Optional(Match.OneOf(null, String)));
+    check(client_id, String)
+    check(redirect_uri, String)
+    check(response_type, String)
+    check(scope, Match.Optional(Match.OneOf(null, String)))
+    check(state, Match.Optional(Match.OneOf(null, String)))
 
     if (!scope) {
-        scope = [];
+        scope = []
     }
-
-    console.log('SCOPE SCOPE SCOPE', scope);
 
     // validate the user is authenticated.
-    var userId = this.userId;
+    var userId = this.userId
     if (!userId) {
         return {
-            success: false,
-            error: 'User not authenticated.'
-        };
+            error: "User not authenticated"
+        }
     }
 
-    // The oauth2-server project relies heavily on express to validate and
-    // manipulate the oauth2 grant. A forthcoming version will abstract this
-    // behaviour into promises.
-    // That being the case, we need to get run an authorization grant as if
-    // it were a promise. Warning, the following code is difficult to follow.
-    // What we are doing is mocking and express app but never attaching it to
-    // Meteor. This allows oauth2-server to behave as it would as if it was
-    // natively attached to the webapp. The following code mocks express,
-    // request, response, check and next in order to retrive the data we need.
-    // Further, we are also running this in a synchronous manner. Enjoy! :)
+    let req = new Request({
+        method: "GET",
+        body: {
+            client_id: client_id,
+            response_type: response_type,
+            redirect_uri: redirect_uri,
+            scope: scope,
+            state: state
+        },
+        query: {},
+        headers: {
+            //Authorization: 'Bearer foobar'
+        }
+    })
 
-    // create check callback that returns the user.
-    var checkCallback = function (req, callback) {
-        callback(
-            null, // error.
-            true, // user authorizes the code creation.
-            {
-                id: userId
-            }
-        );
-    };
-
-    // retrieve the grant function from oauth2-server. This method setups up the
-    // this context and such. The returned method is what express would normally
-    // expect when handling a URL. eg. function(req, res, next)
-    var authCodeGrantFn = oAuth2Server.oauthserver.authCodeGrant(checkCallback);
-
-    // make the grant function run synchronously.
-    var authCodeGrantFnSync = Async.wrap(function (done) {
-        // the return object.
-        var response = {
+    let res = new Response({
+        headers: {},
+        body: {
             success: false,
             error: null,
+            state: state,
             authorizationCode: null,
-            redirectToUri: null
-        };
-
-        // create mock express app.
-        var mockApp = express();
-        var req = mockApp.request;
-
-        // set the request body values. In a typical express setup, the body
-        // would be parsed by the body-parser package. We are cutting out
-        // the middle man, so to speak.
-        req.body = {
-            client_id: clientId,
-            response_type: responseType,
-            redirect_uri: redirectUri
-        };
-        req.query = {};
-
-        // listen for redirect calls.
-        var res = mockApp.response;
-        res.redirect = function (uri) {
-            response.redirectToUri = uri;
-
-            // we have what we need, trigger the done function with the response data.
-            done(null, response);
-        };
-
-        // listen for errors.
-        var next = function (err) {
-            response.error = err;
-
-            // we have what we need, trigger the done function with the response data.
-            done(null, response);
-        };
-
-        // call the async function with the mocked params.
-        authCodeGrantFn(req, res, next);
-    });
-
-    // run the auth code grant function in a synchronous manner.
-    var result = authCodeGrantFnSync();
-
-
-    // update the success flag.
-    result.success = !result.error && !(/[?&]error=/g).test(result.redirectToUri);
-
-    // set the authorization code.
-    if (result.redirectToUri) {
-        var match = result.redirectToUri.match(/[?&]code=([0-9a-f]+)/);
-        if (match.length > 1) {
-            result.authorizationCode = match[1];
+            redirectToUri: redirect_uri
         }
+    })
 
-        // add the state to the url.
-        if (state) {
-            result.redirectToUri += '&state=' + state;
-        }
-    }
-//console.log(result);
+    var resultFn = oauth.oauthserver.authorize(req, res, {
+            authenticateHandler: {
+                handle: req => {
+                    return {
+                        userId: userId
+                    }
+                }
+            }
+        })
+        .then(function (code) {
+            if (code.authorizationCode) {
+                res.body.authorizationCode = code.authorizationCode
+                res.body.success = true
+                delete res.body.error
+            }
+            return res
+        })
+        .catch(function (err) {
+            // handle error condition
+            throw new Meteor.Error(err.code, err.name, err.message)
+        })
 
-    return result;
-};
+    return resultFn
 
-Meteor.methods(methods);
+}
+
+Meteor.methods(methods)
