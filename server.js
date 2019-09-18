@@ -165,6 +165,139 @@ app.get(["/whoami"],
     }
 )
 
+app.get(["/whoami/emails"],
+    function (req, res) {
+        let nreq = new Request(req)
+        let nres = new Response(res)
+        let options = {
+            scope: "identity.emails"
+        }
+
+        oauth.oauthserver.authenticate(nreq, nres, options)
+            .then((token) => {
+                return Meteor.users.rawCollection().findOne({
+                    _id: token.user.id
+                }, {
+                    fields: {
+                        "username": 1,
+                        "profile.name": 1,
+                        "emails.address": 1,
+                    }
+                })
+            })
+            .then((user) => {
+                // The resource owner granted the access request.
+                res.status(200).send(user)
+            })
+            .catch((err) => {
+                // The request was invalid or not authorized.
+                console.log(err)
+                if (err.statusCode) {
+                    res.status(err.statusCode).send({
+                        error: err.message
+                    })
+                } else {
+                    res.status(503).send({
+                        error: "unexpected_error"
+                    })
+                }
+            })
+
+    }
+)
+
+app.get(["/whoami/contact-info"],
+    function (req, res) {
+        let nreq = new Request(req)
+        let nres = new Response(res)
+        let options = {
+            scope: "identity.contact_info"
+        }
+
+        oauth.oauthserver.authenticate(nreq, nres, options)
+            .then((token) => {
+                return Meteor.users.rawCollection().findOne({
+                    _id: token.user.id
+                }, {
+                    fields: {
+                        "username": 1,
+                        "profile.name": 1,
+                        "emails.address": 1,
+                    }
+                })
+            })
+            .then((user) => {
+                // The resource owner granted the access request.
+                res.status(200).send(user)
+            })
+            .catch((err) => {
+                // The request was invalid or not authorized.
+                console.log(err)
+                if (err.statusCode) {
+                    res.status(err.statusCode).send({
+                        error: err.message
+                    })
+                } else {
+                    res.status(503).send({
+                        error: "unexpected_error"
+                    })
+                }
+            })
+
+    }
+)
+
+app.get(["/whoami/profile"],
+    function (req, res) {
+        let nreq = new Request(req)
+        let nres = new Response(res)
+        let options = {
+            scope: "identity.profile"
+        }
+
+        oauth.oauthserver.authenticate(nreq, nres, options)
+            .then((token) => {
+                return Meteor.users.rawCollection().findOne({
+                    _id: token.user.id
+                }, {
+                    fields: {
+                        "username": 1,
+                        "profile.name": 1,
+                        "profile.uavatar": 1,
+                        "profile.time_zone": 1,
+                        "profile.timezone": 1,
+                        "profile.country":1,
+                        "profile.headline": 1,
+                        "profile.bio": 1,
+                        "profile.company_name": 1,
+                        "profile.company_type": 1,
+                        "profile.company_profile": 1,
+                        "profile.company_role": 1,
+                        "profile.company_location": 1
+                    }
+                })
+            })
+            .then((user) => {
+                // The resource owner granted the access request.
+                res.status(200).send(user)
+            })
+            .catch((err) => {
+                // The request was invalid or not authorized.
+                console.log(err)
+                if (err.statusCode) {
+                    res.status(err.statusCode).send({
+                        error: err.message
+                    })
+                } else {
+                    res.status(503).send({
+                        error: "unexpected_error"
+                    })
+                }
+            })
+
+    }
+)
+
 app.get(["/token/permissions"],
     function (req, res) {
         let nreq = new Request(req)
