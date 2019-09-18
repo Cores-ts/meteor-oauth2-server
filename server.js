@@ -170,7 +170,7 @@ app.get(["/whoami/emails"],
         let nreq = new Request(req)
         let nres = new Response(res)
         let options = {
-            scope: "identity.emails"
+            scope: "identity.email"
         }
 
         oauth.oauthserver.authenticate(nreq, nres, options)
