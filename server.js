@@ -47,8 +47,8 @@ app.use(bodyParser.urlencoded({
 
 app.use((req, res, next) => {
     if (req.headers["content-type"] !== "application/x-www-form-urlencoded" && req.method === "POST") {
-        req.headers["content-type"] = "application/x-www-form-urlencoded";
-        req.body = Object.assign({}, req.body, req.query);
+        req.headers["content-type"] = "application/x-www-form-urlencoded"
+        req.body = Object.assign({}, req.body, req.query)
     }
     next()
 })
@@ -120,184 +120,6 @@ app.all(["/token"],
     }
 )
 
-/////////////////////
-// Configure really basic identity service
-////////////////////
-
-app.get(["/whoami"],
-    function (req, res) {
-        let nreq = new Request(req)
-        let nres = new Response(res)
-        let options = {
-            scope: "identity.basic"
-        }
-
-        oauth.oauthserver.authenticate(nreq, nres, options)
-            .then((token) => {
-                return Meteor.users.rawCollection().findOne({
-                    _id: token.user.id
-                }, {
-                    fields: {
-                        "username": 1,
-                        "profile.name": 1,
-                        "profile.uavatar": 1
-                    }
-                })
-            })
-            .then((user) => {
-                // The resource owner granted the access request.
-                res.status(200).send(user)
-            })
-            .catch((err) => {
-                // The request was invalid or not authorized.
-                console.log(err)
-                if (err.statusCode) {
-                    res.status(err.statusCode).send({
-                        error: err.message
-                    })
-                } else {
-                    res.status(503).send({
-                        error: "unexpected_error"
-                    })
-                }
-            })
-
-    }
-)
-
-app.get(["/whoami/emails"],
-    function (req, res) {
-        let nreq = new Request(req)
-        let nres = new Response(res)
-        let options = {
-            scope: "identity.email"
-        }
-
-        oauth.oauthserver.authenticate(nreq, nres, options)
-            .then((token) => {
-                return Meteor.users.rawCollection().findOne({
-                    _id: token.user.id
-                }, {
-                    fields: {
-                        "username": 1,
-                        "profile.name": 1,
-                        "emails.address": 1,
-                    }
-                })
-            })
-            .then((user) => {
-                // The resource owner granted the access request.
-                res.status(200).send(user)
-            })
-            .catch((err) => {
-                // The request was invalid or not authorized.
-                console.log(err)
-                if (err.statusCode) {
-                    res.status(err.statusCode).send({
-                        error: err.message
-                    })
-                } else {
-                    res.status(503).send({
-                        error: "unexpected_error"
-                    })
-                }
-            })
-
-    }
-)
-
-app.get(["/whoami/contact-info"],
-    function (req, res) {
-        let nreq = new Request(req)
-        let nres = new Response(res)
-        let options = {
-            scope: "identity.contact_info"
-        }
-
-        oauth.oauthserver.authenticate(nreq, nres, options)
-            .then((token) => {
-                return Meteor.users.rawCollection().findOne({
-                    _id: token.user.id
-                }, {
-                    fields: {
-                        "username": 1,
-                        "profile.name": 1,
-                        "emails.address": 1,
-                    }
-                })
-            })
-            .then((user) => {
-                // The resource owner granted the access request.
-                res.status(200).send(user)
-            })
-            .catch((err) => {
-                // The request was invalid or not authorized.
-                console.log(err)
-                if (err.statusCode) {
-                    res.status(err.statusCode).send({
-                        error: err.message
-                    })
-                } else {
-                    res.status(503).send({
-                        error: "unexpected_error"
-                    })
-                }
-            })
-
-    }
-)
-
-app.get(["/whoami/profile"],
-    function (req, res) {
-        let nreq = new Request(req)
-        let nres = new Response(res)
-        let options = {
-            scope: "identity.profile"
-        }
-
-        oauth.oauthserver.authenticate(nreq, nres, options)
-            .then((token) => {
-                return Meteor.users.rawCollection().findOne({
-                    _id: token.user.id
-                }, {
-                    fields: {
-                        "username": 1,
-                        "profile.name": 1,
-                        "profile.uavatar": 1,
-                        "profile.time_zone": 1,
-                        "profile.timezone": 1,
-                        "profile.country":1,
-                        "profile.headline": 1,
-                        "profile.bio": 1,
-                        "profile.company_name": 1,
-                        "profile.company_type": 1,
-                        "profile.company_profile": 1,
-                        "profile.company_role": 1,
-                        "profile.company_location": 1
-                    }
-                })
-            })
-            .then((user) => {
-                // The resource owner granted the access request.
-                res.status(200).send(user)
-            })
-            .catch((err) => {
-                // The request was invalid or not authorized.
-                console.log(err)
-                if (err.statusCode) {
-                    res.status(err.statusCode).send({
-                        error: err.message
-                    })
-                } else {
-                    res.status(503).send({
-                        error: "unexpected_error"
-                    })
-                }
-            })
-
-    }
-)
-
 app.get(["/token/permissions"],
     function (req, res) {
         let nreq = new Request(req)
@@ -351,6 +173,294 @@ app.get(["/token/debug"],
                 }
             })
 
+    }
+)
+
+/////////////////////
+// Configure really basic identity service
+////////////////////
+
+app.get(["/whoami", "/me"],
+    function (req, res) {
+        let nreq = new Request(req)
+        let nres = new Response(res)
+        let options = {
+            scope: "identity.basic"
+        }
+
+        oauth.oauthserver.authenticate(nreq, nres, options)
+            .then((token) => {
+                return Meteor.users.rawCollection().findOne({
+                    _id: token.user.id
+                }, {
+                    fields: {
+                        "username": 1,
+                        "profile.name": 1,
+                        "profile.uavatar": 1
+                    }
+                })
+            })
+            .then((user) => {
+                // The resource owner granted the access request.
+                res.status(200).send(user)
+            })
+            .catch((err) => {
+                // The request was invalid or not authorized.
+                console.log(err)
+                if (err.statusCode) {
+                    res.status(err.statusCode).send({
+                        error: err.message
+                    })
+                } else {
+                    res.status(503).send({
+                        error: "unexpected_error"
+                    })
+                }
+            })
+
+    }
+)
+
+app.get(["/whoami/emails", "/me/emails"],
+    function (req, res) {
+        let nreq = new Request(req)
+        let nres = new Response(res)
+        let options = {
+            scope: "identity.email"
+        }
+
+        oauth.oauthserver.authenticate(nreq, nres, options)
+            .then((token) => {
+                return Meteor.users.rawCollection().findOne({
+                    _id: token.user.id
+                }, {
+                    fields: {
+                        "username": 1,
+                        "profile.name": 1,
+                        "emails.address": 1,
+                    }
+                })
+            })
+            .then((user) => {
+                // The resource owner granted the access request.
+                res.status(200).send(user)
+            })
+            .catch((err) => {
+                // The request was invalid or not authorized.
+                console.log(err)
+                if (err.statusCode) {
+                    res.status(err.statusCode).send({
+                        error: err.message
+                    })
+                } else {
+                    res.status(503).send({
+                        error: "unexpected_error"
+                    })
+                }
+            })
+
+    }
+)
+
+app.get(["/whoami/contact-info", "/me/contact-info"],
+    function (req, res) {
+        let nreq = new Request(req)
+        let nres = new Response(res)
+        let options = {
+            scope: "identity.contact_info"
+        }
+
+        oauth.oauthserver.authenticate(nreq, nres, options)
+            .then((token) => {
+                return Meteor.users.rawCollection().findOne({
+                    _id: token.user.id
+                }, {
+                    fields: {
+                        "username": 1,
+                        "profile.name": 1,
+                        "emails.address": 1,
+                    }
+                })
+            })
+            .then((user) => {
+                // The resource owner granted the access request.
+                res.status(200).send(user)
+            })
+            .catch((err) => {
+                // The request was invalid or not authorized.
+                console.log(err)
+                if (err.statusCode) {
+                    res.status(err.statusCode).send({
+                        error: err.message
+                    })
+                } else {
+                    res.status(503).send({
+                        error: "unexpected_error"
+                    })
+                }
+            })
+
+    }
+)
+
+app.get(["/whoami/profile", "/me/profile"],
+    function (req, res) {
+        let nreq = new Request(req)
+        let nres = new Response(res)
+        let options = {
+            scope: "identity.profile"
+        }
+
+        oauth.oauthserver.authenticate(nreq, nres, options)
+            .then((token) => {
+                return Meteor.users.rawCollection().findOne({
+                    _id: token.user.id
+                }, {
+                    fields: {
+                        "username": 1,
+                        "profile.name": 1,
+                        "profile.uavatar": 1,
+                        "profile.time_zone": 1,
+                        "profile.timezone": 1,
+                        "profile.country": 1,
+                        "profile.headline": 1,
+                        "profile.bio": 1,
+                        "profile.company_name": 1,
+                        "profile.company_type": 1,
+                        "profile.company_profile": 1,
+                        "profile.company_role": 1,
+                        "profile.company_location": 1
+                    }
+                })
+            })
+            .then((user) => {
+                // The resource owner granted the access request.
+                res.status(200).send(user)
+            })
+            .catch((err) => {
+                // The request was invalid or not authorized.
+                console.log(err)
+                if (err.statusCode) {
+                    res.status(err.statusCode).send({
+                        error: err.message
+                    })
+                } else {
+                    res.status(503).send({
+                        error: "unexpected_error"
+                    })
+                }
+            })
+
+    }
+)
+
+app.get(["/api/memberships/:_community"],
+    function (req, res) {
+        let nreq = new Request(req)
+        let nres = new Response(res)
+        console.log(req.params, "communities.membership_info@" + req.params._community)
+
+        let options = {
+            scope: "communities.membership_info@" + req.params._community
+        }
+
+        oauth.oauthserver.authenticate(nreq, nres, options)
+            .then((token) => {
+                return Applications.rawCollection().findOne({
+                    "owner.uid": token.user.id,
+                    "opencall.slug": req.params._community
+                }, {
+                    fields: {
+                        "updatesHistory": 0,
+                        "status": 0,
+                        "_version": 0,
+                        "modifierId": 0,
+                        "opencall": 0
+                    }
+                })
+            })
+            .then((data) => {
+                if (data) {
+                    res.status(200).send({
+                        "ok": true,
+                        "data": data
+                    })
+                    return
+                }
+
+                res.status(404).send({
+                    "ok": false,
+                    "error": "No memberships found"
+                })
+            })
+            .catch((err) => {
+                if (err.statusCode) {
+                    res.status(err.statusCode).send({
+                        error: err.message
+                    })
+                } else {
+                    res.status(503).send({
+                        error: "unexpected_error"
+                    })
+                }
+            })
+    }
+)
+
+app.get(["/api/applications/:_opencall"],
+    function (req, res) {
+        let nreq = new Request(req)
+        let nres = new Response(res)
+        console.log(req.params, "opencalls.submitted_applications@" + req.params._opencall)
+        let options = {
+            scope: "opencalls.submitted_applications@" + req.params._opencall
+        }
+
+        oauth.oauthserver.authenticate(nreq, nres, options)
+            .then((token) => {
+                return Applications.rawCollection().find({
+                    "owner.uid": token.user.id,
+                    "opencall.slug": req.params._opencall,
+                    "status": "Submitted"
+                }, {
+                    sort: {
+                        "status": -1,
+                        "updatedAt": -1
+                    },
+                    fields: {
+                        "updatesHistory": 0,
+                        "_version": 0,
+                        "modifierId": 0,
+                        "opencall": 0,
+                        "tags": 0
+                    }
+                }).toArray()
+            })
+            .then((data) => {
+                if (data) {
+                    res.status(200).send({
+                        "ok": true,
+                        "data": data
+                    })
+                    return
+                }
+
+                res.status(404).send({
+                    "ok": false,
+                    "error": "No applications found"
+                })
+            })
+            .catch((err) => {
+                if (err.statusCode) {
+                    res.status(err.statusCode).send({
+                        error: err.message
+                    })
+                } else {
+                    res.status(503).send({
+                        error: "unexpected_error"
+                    })
+                }
+            })
     }
 )
 

@@ -464,7 +464,11 @@ MeteorModel = (function () {
                 try {
                     let requestedScopes = scope.split(/[\s,]+/)
                     let authorizedScopes = accessToken.scope
-                    let verified = _.uniq(requestedScopes.filter(s => authorizedScopes.indexOf(s.split("@")[0]) >= 0))
+                    //let verified = _.uniq(requestedScopes.filter(s => authorizedScopes.indexOf(s.split("@")[0]) >= 0))
+                    //let verified = _.uniq(requestedScopes)
+                    let verified = _.uniq(_.intersection(requestedScopes, authorizedScopes))
+
+                    //console.log(authorizedScopes, verified)
                     callback(null, verified.join(" "))
                 } catch (e) {
                     callback(e)
