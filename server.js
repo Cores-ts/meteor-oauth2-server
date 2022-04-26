@@ -221,6 +221,56 @@ app.get(["/whoami", "/me"],
     }
 )
 
+app.get(["/personal-data"],
+    function (req, res) {
+        let nreq = new Request(req)
+        let nres = new Response(res)
+        let options = {
+            scope: "identity.basic"
+        }
+
+        oauth.oauthserver.authenticate(nreq, nres, options)
+            .then(async (token) => {
+                let user = await Meteor.users.rawCollection().findOne({
+                    _id: token.user.id
+                }, {
+                    fields: {
+                        "username": 1,
+                        "profile.name": 1,
+                        "profile.uavatar": 1,
+                        "emails": 1
+                    }
+                })
+
+                return {
+                    username: user.username,
+                    name_first: user.profile?.name?.first,
+                    name_last: user.profile?.name?.last,
+                    avatar: user.profile?.uavatar,
+                    email: user.emails[0]?.address
+                }
+            })
+            .then((user) => {
+                // The resource owner granted the access request.
+                res.status(200).send(user)
+            })
+            .catch((err) => {
+                // The request was invalid or not authorized.
+                console.log(err)
+                if (err.statusCode) {
+                    res.status(err.statusCode).send({
+                        error: err.message
+                    })
+                } else {
+                    res.status(503).send({
+                        error: "unexpected_error"
+                    })
+                }
+            })
+
+    }
+)
+
 app.get(["/whoami/emails", "/me/emails"],
     function (req, res) {
         let nreq = new Request(req)
